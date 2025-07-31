@@ -3,8 +3,14 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 
+interface User {
+  id: string;
+  email?: string;
+  [key: string]: any;
+}
+
 const TestSupabasePage = () => {
-  const [users, setUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -14,7 +20,7 @@ const TestSupabasePage = () => {
         setError(error.message);
         setUsers([]);
       } else {
-        setUsers(data);
+        setUsers(data as User[]);
       }
     };
 
