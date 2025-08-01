@@ -1,4 +1,4 @@
-// app/page.jsx
+// app/page.tsx
 
 import Image from "next/image";
 
@@ -11,7 +11,8 @@ export default function HomePage() {
           alt="Data Medic Lab Logo"
           width={112}
           height={112}
-          className="mx-auto mb-6"
+          className="mx-auto mb-6 cursor-pointer"
+         
         />
         <h1
           className="text-4xl sm:text-5xl font-extrabold text-blue-800 mb-4 leading-tight"

@@ -23,15 +23,22 @@ export default function RootLayout({ children }) {
         <header className="bg-white text-blue-800 shadow-md z-50 relative border-b border-gray-200">
           <div className="max-w-6xl w-full mx-auto flex items-center justify-between px-4 sm:px-6 py-4 sm:py-5">
             {/* Logo */}
-            <Link href="/" className="flex items-center space-x-2">
-              <Image src="/logo.png" alt="logo" width={32} height={32} className="object-contain" />
+            <div className="flex items-center space-x-2">
+              <Image
+                src="/logo.png"
+                alt="Data Medic Lab Logo"
+                width={32}
+                height={32}
+                className="object-contain"
+                priority
+              />
               <span
                 className="text-xl sm:text-2xl font-extrabold tracking-tight hover:text-blue-600 transition font-sans hidden sm:inline"
                 style={{ fontFamily: 'Sarabun, sans-serif' }}
               >
                 Data Medic Lab
               </span>
-            </Link>
+            </div>
 
             {/* Navigation */}
             <nav className="flex space-x-2 sm:space-x-4">
