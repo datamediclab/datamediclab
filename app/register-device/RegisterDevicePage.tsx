@@ -17,7 +17,13 @@ const RegisterDevicePage = () => {
 
   const router = useRouter();
   const [isNewCustomer, setIsNewCustomer] = useState(true);
-  const [customerList, setCustomerList] = useState<any[]>([]);
+  type Customer = {
+  id: string;
+  name: string;
+  phone: string;
+};
+
+  const [customerList, setCustomerList] = useState<Customer[]>([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
 
   const [customerData, setCustomerData] = useState({
