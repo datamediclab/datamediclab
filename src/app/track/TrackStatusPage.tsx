@@ -2,11 +2,23 @@
 
 import { useState } from "react";
 
+interface DeviceStatus {
+  currentStatus?: string;
+  updatedAt?: string;
+  name?: string;
+  email?: string;
+  deviceType?: string;
+  deviceBrand?: string;
+  deviceModel?: string;
+  deviceSerialN?: string;
+  problem?: string;
+}
+
 const TrackStatusPage = () => {
-  const [phone, setPhone] = useState("");
-  const [status, setStatus] = useState(null);
+  const [phone, setPhone] = useState<string>("");
+  const [status, setStatus] = useState<DeviceStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<boolean>(false);
 
   const handleCheckStatus = async () => {
     if (!phone) return;
@@ -15,11 +27,15 @@ const TrackStatusPage = () => {
     try {
       const res = await fetch(`/api/track-status?phone=${phone}`);
       if (!res.ok) throw new Error("ไม่พบข้อมูลจากระบบ");
-      const data = await res.json();
+      const data: DeviceStatus = await res.json();
       setStatus(data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setStatus(null);
-      setError(err.message || "เกิดข้อผิดพลาด");
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("เกิดข้อผิดพลาด");
+      }
     }
     setLoading(false);
   };
@@ -49,9 +65,9 @@ const TrackStatusPage = () => {
       {status && (
         <div className="mt-8 bg-white p-4 rounded shadow w-full max-w-md">
           <h2 className="text-lg font-semibold text-green-700 mb-2">สถานะล่าสุด:</h2>
-          <p className="text-gray-800">{status?.currentStatus || "ไม่พบข้อมูล"}</p>
+          <p className="text-gray-800">{status.currentStatus || "ไม่พบข้อมูล"}</p>
           <p className="text-sm text-gray-500 mt-2">
-            อัปเดตล่าสุด: {status?.updatedAt ? new Date(status.updatedAt).toLocaleString() : "-"}
+            อัปเดตล่าสุด: {status.updatedAt ? new Date(status.updatedAt).toLocaleString() : "-"}
           </p>
 
           {(status.deviceType || status.deviceBrand || status.deviceModel || status.deviceSerialN || status.problem || status.name || status.email) && (

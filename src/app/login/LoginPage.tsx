@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
+import Image from 'next/image';
 
 const LoginPage = () => {
   const router = useRouter();
@@ -36,7 +37,13 @@ const LoginPage = () => {
     <main className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
       <div className="w-full max-w-md bg-white rounded-lg shadow-md p-6">
         <div className="text-center mb-6">
-          <img src="/logo.png" alt="Data Medic Lab Logo" className="w-20 h-auto mx-auto mb-2" />
+          <Image
+            src="/logo.png"
+            alt="Data Medic Lab Logo"
+            width={80}
+            height={80}
+            className="mx-auto mb-2"
+          />
           <h1 className="text-3xl font-bold text-blue-800">เข้าสู่ระบบ</h1>
         </div>
 

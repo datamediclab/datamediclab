@@ -5,6 +5,7 @@
 import "./globals.css";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import Image from "next/image";
 
 export default function RootLayout({ children }) {
   const pathname = usePathname();
@@ -23,7 +24,7 @@ export default function RootLayout({ children }) {
           <div className="max-w-6xl w-full mx-auto flex items-center justify-between px-4 sm:px-6 py-4 sm:py-5">
             {/* Logo */}
             <Link href="/" className="flex items-center space-x-2">
-              <img src="/logo.png" alt="logo" className="h-8 w-8 object-contain" />
+              <Image src="/logo.png" alt="logo" width={32} height={32} className="object-contain" />
               <span
                 className="text-xl sm:text-2xl font-extrabold tracking-tight hover:text-blue-600 transition font-sans hidden sm:inline"
                 style={{ fontFamily: 'Sarabun, sans-serif' }}

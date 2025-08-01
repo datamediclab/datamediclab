@@ -1,13 +1,16 @@
 import Link from "next/link";
+import Image from "next/image";
 
 const ServicesPage = () => {
   return (
     <section className="min-h-[75vh] flex items-center justify-center bg-gray-100 px-6 py-12">
       <div className="text-center max-w-2xl mx-auto">
-        <img
+        <Image
           src="/logo.png"
           alt="Data Medic Lab Logo"
-          className="w-28 h-auto mx-auto mb-6"
+          width={112}
+          height={112}
+          className="mx-auto mb-6"
         />
         <h1
           className="text-4xl sm:text-5xl font-extrabold text-blue-800 mb-4 leading-tight"

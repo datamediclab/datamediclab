@@ -39,9 +39,13 @@ const RegisterDevicePage = () => {
       const { error } = await supabase.from('device_registrations').insert([formData]);
       if (error) throw error;
       router.push('/register-success');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setError('เกิดข้อผิดพลาดในการส่งข้อมูล');
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('เกิดข้อผิดพลาดในการส่งข้อมูล');
+      }
     }
     setLoading(false);
   };
@@ -182,3 +186,5 @@ const RegisterDevicePage = () => {
 };
 
 export default RegisterDevicePage;
+
+
