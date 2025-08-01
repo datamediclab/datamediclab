@@ -7,8 +7,7 @@ import Image from "next/image";
 const Header = () => {
   const pathname = usePathname();
 
-  const navItems = [
-    { name: "หน้าแรก", href: "/" },
+  const navItems = [    
     { name: "บริการ", href: "/services" },
     { name: "ติดต่อเรา", href: "/contact" },
     { name: "ติดตามสถานะ", href: "/track" },
