@@ -1,0 +1,11 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Import Google Font */
+@import url('https://fonts.googleapis.com/css2?family=Sarabun&display=swap');
+
+/* Apply Sarabun font globally */
+body {
+  @apply font-sarabun bg-gray-50 text-gray-800 m-0 p-0;
+}
