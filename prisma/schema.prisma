@@ -1,0 +1,158 @@
+// schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum StatusEnum {
+  WAITING_FOR_CUSTOMER_DEVICE // รอรับอุปกรณ์จากลูกค้า
+  UNDER_DIAGNOSIS // กำลังวิเคราะห์อุปกรณ์
+  ANALYSIS_COMPLETE // แจ้งผลวิเคราะห์แล้ว
+  RECOVERY_IN_PROGRESS // กำลังกู้ข้อมูล
+  RECOVERY_SUCCESSFUL // กู้ข้อมูลสำเร็จ
+  RECOVERY_FAILED // กู้ข้อมูลไม่สำเร็จ
+  DEVICE_RETURNED // ส่งคืนอุปกรณ์แล้ว
+}
+
+enum PaymentMethod {
+  CASH
+  TRANSFER
+  CREDIT_CARD
+  PROMPT_PAY
+}
+
+enum UserRole {
+  ADMIN
+  TECHNICIAN
+  SUPPORT
+}
+
+enum DeviceType {
+  HDD
+  SSD
+  EXTERNAL_DRIVE
+  FLASH_DRIVE
+  MEMORY_CARD
+  OTHER
+}
+
+model Customer {
+  id        String   @id @default(uuid())
+  fullName  String
+  phone     String
+  email     String?
+  lineId    String?
+  createdAt DateTime @default(now())
+  devices   Device[]
+  notes     CustomerNote[]
+}
+
+model Brand {
+  id      String   @id @default(uuid())
+  name    String   @unique
+  devices Device[]
+}
+
+model Device {
+  id              String          @id @default(uuid())
+  customerId      String
+  deviceType      DeviceType
+  brandId         String
+  capacity        String
+  serialNumber    String?
+  description     String?
+  receivedAt      DateTime        @default(now())
+  currentStatus   StatusEnum
+  statusHistory   Json?
+  technicianNote  String?
+  customer        Customer        @relation(fields: [customerId], references: [id])
+  brand           Brand           @relation(fields: [brandId], references: [id])
+  repairRecords   RepairRecord[]
+  statusHistories StatusHistory[]
+  paymentRecords  PaymentRecord[]
+  trackLogs       TrackLog[]
+  activityLogs    AdminActivityLog[]
+}
+
+model TrackLog {
+  id        String   @id @default(uuid())
+  deviceId  String
+  action    String
+  actor     String
+  note      String?
+  createdAt DateTime @default(now())
+
+  device Device @relation(fields: [deviceId], references: [id])
+}
+
+model RepairRecord {
+  id          String   @id @default(uuid())
+  deviceId    String
+  repairDate  DateTime @default(now())
+  technician  String
+  description String?
+  cost        Float
+  note        String?
+  createdAt   DateTime @default(now())
+
+  device Device @relation(fields: [deviceId], references: [id])
+}
+
+model StatusHistory {
+  id        String     @id @default(uuid())
+  deviceId  String
+  from      StatusEnum
+  to        StatusEnum
+  changedBy String
+  note      String?
+  changedAt DateTime   @default(now())
+
+  device Device @relation(fields: [deviceId], references: [id])
+}
+
+model PaymentRecord {
+  id       String        @id @default(uuid())
+  deviceId String
+  amount   Float
+  method   PaymentMethod
+  paidAt   DateTime      @default(now())
+  note     String?
+
+  device Device @relation(fields: [deviceId], references: [id])
+}
+
+model AdminUser {
+  id        String     @id @default(uuid())
+  name      String
+  email     String     @unique
+  password  String
+  role      UserRole
+  createdAt DateTime   @default(now())
+  activityLogs AdminActivityLog[]
+}
+
+model AdminActivityLog {
+  id        String   @id @default(uuid())
+  adminId   String
+  deviceId  String
+  action    String
+  detail    String?
+  createdAt DateTime @default(now())
+
+  admin     AdminUser @relation(fields: [adminId], references: [id])
+  device    Device    @relation(fields: [deviceId], references: [id])
+}
+
+model CustomerNote {
+  id         String   @id @default(uuid())
+  customerId String
+  note       String
+  createdAt  DateTime @default(now())
+
+  customer   Customer @relation(fields: [customerId], references: [id])
+}

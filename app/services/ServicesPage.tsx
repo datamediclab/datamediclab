@@ -1,60 +1,87 @@
+"use client";
+
 import Link from "next/link";
-import Image from "next/image";
+import {
+  FaTools,
+  FaSearch,
+  FaBoxOpen,
+  FaFileAlt,
+  FaCheckCircle,
+  FaShippingFast,
+} from "react-icons/fa";
 
 const ServicesPage = () => {
   return (
-    <section className="min-h-[75vh] flex items-center justify-center bg-gray-100 px-6 py-12">
-      <div className="text-center max-w-2xl mx-auto">
-        <Image
-          src="/logo.png"
-          alt="Data Medic Lab Logo"
-          width={112}
-          height={112}
-          className="mx-auto mb-6"
-        />
-        <h1
-          className="text-4xl sm:text-5xl font-extrabold text-blue-800 mb-4 leading-tight"
-          style={{ fontFamily: 'Sarabun, sans-serif' }}
-        >
-          บริการกู้ข้อมูล
+    <section className="flex flex-col items-center justify-start bg-gray-100 px-4 py-16 w-full">
+      <div className="text-center max-w-2xl mb-12">
+        <h1 className="text-3xl md:text-4xl font-bold text-blue-800 mb-4">
+          ส่งกู้ข้อมูลจากอุปกรณ์ของคุณ
         </h1>
-        <p
-          className="text-gray-700 text-base sm:text-lg leading-relaxed mb-6"
-          style={{ fontFamily: 'Sarabun, sans-serif' }}
-        >
-          รับกู้ข้อมูลจากฮาร์ดดิสก์ที่มีปัญหาทุกประเภท โดยทีมงานมืออาชีพ<br />
-          วิเคราะห์ฟรี ไม่มีค่าใช้จ่ายล่วงหน้า
+        <p className="text-gray-800 text-base md:text-lg leading-relaxed">
+          บริการกู้ข้อมูลจากฮาร์ดดิสก์หรือสื่อจัดเก็บอื่น ๆ ที่มีปัญหา เช่น
+          HDD, SSD, Flash Drive, มือถือ ฯลฯ วิเคราะห์เบื้องต้นฟรี ไม่มีค่าใช้จ่าย
         </p>
-        <ul className="text-left text-gray-800 text-base list-disc list-inside space-y-2 max-w-md mx-auto mb-8">
+      </div>
+
+      {/* จุดเด่น */}
+      <div className="bg-white shadow-md rounded-lg p-6 max-w-xl w-full mb-12">
+        <h2 className="text-lg md:text-xl font-semibold text-blue-800 mb-4">
+          จุดเด่นของบริการเรา
+        </h2>
+        <ul className="text-left text-gray-800 text-sm md:text-base list-disc list-inside space-y-2">
           <li>ไม่อ่าน ไม่คิดเงิน</li>
           <li>วิเคราะห์ฟรี ไม่มีค่าใช้จ่ายล่วงหน้า</li>
-          <li>รองรับ HDD, SSD, Flash Drive, มือถือ ฯลฯ</li>
-          <li>ใช้เครื่องมือมาตรฐานระดับสากล</li>
-          <li>รักษาความลับลูกค้า 100%</li>
+          <li>รองรับสื่อเก็บข้อมูลหลากหลายรูปแบบ</li>
+          <li>ใช้อุปกรณ์มาตรฐานระดับสากลในการกู้</li>
+          <li>ทีมงานมีประสบการณ์สูง รักษาความลับ 100%</li>
         </ul>
-        <div className="max-w-3xl w-full bg-white shadow-md rounded-lg p-6 sm:p-8 mx-auto">
-          <h2
-            className="text-xl sm:text-2xl font-bold text-blue-800 mb-4"
-            style={{ fontFamily: 'Sarabun, sans-serif' }}
-          >
-            เริ่มต้นด้วยการลงทะเบียนส่งอุปกรณ์
-          </h2>
-          <p
-            className="text-gray-700 mb-4 text-sm sm:text-base"
-            style={{ fontFamily: 'Sarabun, sans-serif' }}
-          >
-            เพื่อป้องกันความผิดพลาดในการส่งอุปกรณ์ กรุณาลงทะเบียนก่อนทุกครั้ง โดยระบุข้อมูลผู้ส่ง และประเภทของปัญหาที่พบ<br />
-            เมื่อเสร็จแล้ว คุณจะได้รับรหัสเพื่อติดไว้ที่กล่องพัสดุ หรือแจ้งต่อเจ้าหน้าที่รับอุปกรณ์
-          </p>
-          <div className="text-center">
-            <Link
-              href="/register-device"
-              className="inline-block bg-blue-700 hover:bg-blue-800 text-white font-semibold py-2 px-6 rounded transition duration-300"
-            >
-              ลงทะเบียนส่งอุปกรณ์
-            </Link>
+      </div>
+
+      {/* ขั้นตอนการส่งกู้ข้อมูล */}
+      <div className="max-w-5xl w-full mb-16">
+        <h3 className="text-xl font-semibold text-blue-800 text-center mb-8">
+          ขั้นตอนการส่งกู้ข้อมูล
+        </h3>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-8 text-center">
+          <div className="flex flex-col items-center">
+            <FaFileAlt className="text-4xl text-blue-700 mb-2" />
+            <p className="text-sm font-medium text-gray-800">ลงทะเบียนอุปกรณ์</p>
+          </div>
+          <div className="flex flex-col items-center">
+            <FaBoxOpen className="text-4xl text-blue-700 mb-2" />
+            <p className="text-sm font-medium text-gray-800">จัดส่งถึงห้องแล็บ</p>
+          </div>
+          <div className="flex flex-col items-center">
+            <FaSearch className="text-4xl text-blue-700 mb-2" />
+            <p className="text-sm font-medium text-gray-800">วิเคราะห์อาการ</p>
+          </div>
+          <div className="flex flex-col items-center">
+            <FaTools className="text-4xl text-blue-700 mb-2" />
+            <p className="text-sm font-medium text-gray-800">ดำเนินการกู้ข้อมูล</p>
+          </div>
+          <div className="flex flex-col items-center">
+            <FaCheckCircle className="text-4xl text-blue-700 mb-2" />
+            <p className="text-sm font-medium text-gray-800">แจ้งผล + รายการไฟล์</p>
+          </div>
+          <div className="flex flex-col items-center">
+            <FaShippingFast className="text-4xl text-blue-700 mb-2" />
+            <p className="text-sm font-medium text-gray-800">ส่งคืนพร้อมข้อมูล</p>
           </div>
         </div>
+      </div>
+
+      {/* ปุ่มลงทะเบียน */}
+      <div className="max-w-xl w-full text-center">
+        <h3 className="text-lg md:text-xl font-semibold text-blue-800 mb-3">
+          พร้อมเริ่มกู้ข้อมูลของคุณแล้วใช่ไหม?
+        </h3>
+      
+        <Link
+          href="/register-device"
+          className="inline-block bg-blue-700 hover:bg-blue-800 text-white font-semibold px-6 py-3 rounded shadow-md"
+        >
+          ลงทะเบียนส่งอุปกรณ์
+        </Link>
       </div>
     </section>
   );

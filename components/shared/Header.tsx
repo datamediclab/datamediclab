@@ -8,9 +8,9 @@ const Header = () => {
   const pathname = usePathname();
 
   const navItems = [    
-    { name: "บริการ", href: "/services" },
-    { name: "ติดต่อเรา", href: "/contact" },
+    { name: "ส่งกู้ข้อมูล", href: "/services" },
     { name: "ติดตามสถานะ", href: "/track" },
+    { name: "ติดต่อเรา", href: "/contact" },
   ];
 
   return (

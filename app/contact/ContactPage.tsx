@@ -33,7 +33,7 @@ const ContactPage = () => {
             <li><strong>📞 โทรศัพท์:</strong> 084-494-9798</li>
             <li><strong>💬 Line:</strong> <a href="https://line.me/R/ti/p/@datamediclab" target="_blank" rel="noopener noreferrer" className="text-blue-700 underline">@datamediclab</a></li>
             <li><strong>📘 Facebook:</strong> <a href="https://facebook.com/datamediclab" target="_blank" rel="noopener noreferrer" className="text-blue-700 underline">Data Medic Lab</a></li>
-            <li><strong>📧 Email:</strong> <a href="mailto:datamediclab@example.com" className="text-blue-700 underline">datamediclab@example.com</a></li>
+            <li><strong>📧 Email:</strong> <a href="mailto:datamediclab@example.com" className="text-blue-700 underline">datamediclab@gmail.com</a></li>
             <li><strong>🕘 เวลาทำการ:</strong> ทุกวัน 09:00 - 18:00 น.</li>
           </ul>
         </div>
