@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@headlessui/react": "^2.2.7",
     "@prisma/client": "^6.13.0",
     "@supabase/supabase-js": "^2.53.0",
     "next": "15.4.5",

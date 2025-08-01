@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
+import { Combobox } from '@headlessui/react';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -11,23 +12,21 @@ const supabase = createClient(
 
 const RegisterDevicePage = () => {
   const [brandList, setBrandList] = useState<{ id: string; name: string }[]>([]);
-  
-
-  
 
   const router = useRouter();
   const [isNewCustomer, setIsNewCustomer] = useState(true);
   type Customer = {
-  id: string;
-  name: string;
-  phone: string;
-};
+    id: string;
+    fullName: string;
+    phone: string;
+  };
 
   const [customerList, setCustomerList] = useState<Customer[]>([]);
-  const [selectedCustomerId, setSelectedCustomerId] = useState<string>('');
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [query, setQuery] = useState('');
 
   const [customerData, setCustomerData] = useState({
-    name: '',
+    fullName: '',
     phone: '',
     email: '',
   });
@@ -48,9 +47,9 @@ const RegisterDevicePage = () => {
   useEffect(() => {
     const fetchCustomers = async () => {
       const { data, error } = await supabase
-        .from('customers')
-        .select('id, name, phone')
-        .order('created_at', { ascending: false });
+        .from('Customer')
+        .select('id, fullName, phone')
+        .order('createdAt', { ascending: false });
       if (!error && data) setCustomerList(data);
     };
 
@@ -87,17 +86,18 @@ const RegisterDevicePage = () => {
 
       if (isNewCustomer) {
         const { data: inserted, error: customerError } = await supabase
-          .from('customers')
+          .from('Customer')
           .insert([{ ...customerData }])
           .select()
           .single();
         if (customerError) throw customerError;
         customerId = inserted.id;
       } else {
-        customerId = selectedCustomerId;
+        if (!selectedCustomer) throw new Error('กรุณาเลือกลูกค้า');
+        customerId = selectedCustomer.id;
       }
 
-      const { error: deviceError } = await supabase.from('devices').insert([
+      const { error: deviceError } = await supabase.from('Device').insert([
         {
           ...deviceData,
           customer_id: customerId,
@@ -116,13 +116,20 @@ const RegisterDevicePage = () => {
     setLoading(false);
   };
 
+  const filteredCustomers =
+    query === ''
+      ? customerList
+      : customerList.filter((c) =>
+        `${c.fullName} ${c.phone}`.toLowerCase().includes(query.toLowerCase())
+      );
+
   return (
     <section className="min-h-screen flex items-center justify-center bg-gray-100 px-6 py-12">
       <div className="text-center w-full max-w-3xl mx-auto">
-        <h1 className="text-4xl sm:text-5xl font-extrabold text-blue-800 mb-2 leading-tight" style={{ fontFamily: 'Sarabun, sans-serif' }}>
+        <h1 className="text-4xl sm:text-5xl font-extrabold text-blue-900 mb-2 leading-tight" style={{ fontFamily: 'Sarabun, sans-serif' }}>
           ลงทะเบียนส่งอุปกรณ์
         </h1>
-        <p className="text-gray-700 text-base sm:text-lg leading-relaxed mb-8" style={{ fontFamily: 'Sarabun, sans-serif' }}>
+        <p className="text-gray-800 text-base sm:text-lg leading-relaxed mb-8" style={{ fontFamily: 'Sarabun, sans-serif' }}>
           กรุณากรอกข้อมูลของคุณให้ครบถ้วน เพื่อให้ทีมงานสามารถตรวจสอบและติดต่อกลับได้รวดเร็วที่สุด
         </p>
 
@@ -140,13 +147,14 @@ const RegisterDevicePage = () => {
             </label>
           </div>
 
+
           <h2 className="text-lg font-semibold text-gray-800 mb-4">ข้อมูลลูกค้า</h2>
 
           {isNewCustomer ? (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
               <div className="sm:col-span-1">
                 <label className="block text-gray-700 mb-2">ชื่อ-นามสกุล</label>
-                <input type="text" name="name" value={customerData.name} onChange={handleCustomerChange} className="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900" placeholder="กรอกชื่อ-นามสกุล" required />
+                <input type="text" name="fullName" value={customerData.fullName} onChange={handleCustomerChange} className="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900" placeholder="กรอกชื่อ-นามสกุล" required />
               </div>
               <div className="sm:col-span-1">
                 <label className="block text-gray-700 mb-2">เบอร์โทร</label>
@@ -160,12 +168,33 @@ const RegisterDevicePage = () => {
           ) : (
             <div className="mb-6">
               <label className="block text-gray-700 mb-2">เลือกลูกค้า</label>
-              <select value={selectedCustomerId} onChange={(e) => setSelectedCustomerId(e.target.value)} className="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900" required>
-                <option value="">-- เลือกลูกค้า --</option>
-                {customerList.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name} ({c.phone})</option>
-                ))}
-              </select>
+
+              <Combobox value={selectedCustomer} onChange={setSelectedCustomer}>
+                <div className="relative">
+                  <Combobox.Input
+                    className="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
+                    displayValue={(c: Customer) => c ? `${c.fullName} (${c.phone})` : ''}
+                    onChange={(event) => setQuery(event.target.value)}
+                    placeholder="ค้นหาชื่อลูกค้า..."
+                  />
+                  <Combobox.Options className="absolute mt-1 w-full bg-white border rounded shadow z-10 max-h-60 overflow-auto">
+                    {filteredCustomers.map((customer) => (
+                      <Combobox.Option
+                        key={customer.id}
+                        value={customer}
+                        className={({ active }) =>
+                          `relative cursor-pointer select-none py-2 px-4 ${active ? 'text-gray-900' : 'text-gray-900'
+                          }`
+                        }
+                      >
+                        {customer.fullName} ({customer.phone})
+                      </Combobox.Option>
+                    ))}
+                  </Combobox.Options>
+                </div>
+              </Combobox>
+
+
             </div>
           )}
 
@@ -194,7 +223,6 @@ const RegisterDevicePage = () => {
                   <option key={brand.id} value={brand.id}>{brand.name}</option>
                 ))}
               </select>
-              
             </div>
             <div>
               <label className="block text-gray-700 mb-2">รุ่น</label>
@@ -222,4 +250,3 @@ const RegisterDevicePage = () => {
 };
 
 export default RegisterDevicePage;
-
