@@ -8,6 +8,7 @@ const Header = () => {
   const pathname = usePathname();
 
   const navItems = [
+    { name: "หน้าแรก", href: "/" },
     { name: "บริการ", href: "/services" },
     { name: "ติดต่อเรา", href: "/contact" },
     { name: "ติดตามสถานะ", href: "/track" },
@@ -28,12 +29,14 @@ const Header = () => {
               priority
             />
           </Link>
-          <span
-            className="text-xl sm:text-2xl font-extrabold tracking-tight hover:text-blue-600 transition font-sans hidden sm:inline"
-            style={{ fontFamily: 'Sarabun, sans-serif' }}
-          >
-            Data Medic Lab
-          </span>
+          <Link href="/">
+            <span
+              className="text-xl sm:text-2xl font-extrabold tracking-tight hover:text-blue-600 transition font-sans hidden sm:inline"
+              style={{ fontFamily: 'Sarabun, sans-serif' }}
+            >
+              Data Medic Lab
+            </span>
+          </Link>
         </div>
 
         {/* Navigation */}
