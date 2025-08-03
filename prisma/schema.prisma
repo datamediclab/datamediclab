@@ -28,8 +28,6 @@ enum PaymentMethod {
 
 enum UserRole {
   ADMIN
-  TECHNICIAN
-  SUPPORT
 }
 
 enum DeviceType {
@@ -42,82 +40,86 @@ enum DeviceType {
 }
 
 model Customer {
-  id        String   @id @default(uuid())
+  id        String         @id @default(uuid()) @db.Uuid
   fullName  String
   phone     String
   email     String?
   lineId    String?
-  createdAt DateTime @default(now())
   devices   Device[]
   notes     CustomerNote[]
-}
-
-model Brand {
-  id      String   @id @default(uuid())
-  name    String   @unique
-  devices Device[]
+  createdAt DateTime       @default(now())
 }
 
 model Device {
-  id              String          @id @default(uuid())
-  customerId      String
+  id              String             @id @default(uuid()) @db.Uuid
+  customerId      String             @db.Uuid
   deviceType      DeviceType
-  brandId         String
+  brandId         String             @db.Uuid
+  modelId         String?            @db.Uuid
   capacity        String
   serialNumber    String?
   description     String?
-  receivedAt      DateTime        @default(now())
   currentStatus   StatusEnum
   statusHistory   Json?
   technicianNote  String?
-  customer        Customer        @relation(fields: [customerId], references: [id])
-  brand           Brand           @relation(fields: [brandId], references: [id])
+  technicianId    String?            @db.Uuid
+  changedById     String?            @db.Uuid
+  customer        Customer           @relation(fields: [customerId], references: [id])
+  brand           Brand              @relation(fields: [brandId], references: [id])
+  model           BrandModel?        @relation(fields: [modelId], references: [id])
+  technician      Admin?             @relation("Technician", fields: [technicianId], references: [id])
+  changedBy       Admin?             @relation("StatusChangedBy", fields: [changedById], references: [id])
   repairRecords   RepairRecord[]
   statusHistories StatusHistory[]
   paymentRecords  PaymentRecord[]
   trackLogs       TrackLog[]
   activityLogs    AdminActivityLog[]
+  receivedAt      DateTime           @default(now())
+  createdAt       DateTime           @default(now())
 }
 
 model TrackLog {
-  id        String   @id @default(uuid())
-  deviceId  String
+  id        String   @id @default(uuid()) @db.Uuid
+  deviceId  String   @db.Uuid
+  actorId   String?  @db.Uuid
   action    String
-  actor     String
   note      String?
   createdAt DateTime @default(now())
 
   device Device @relation(fields: [deviceId], references: [id])
+  actor  Admin? @relation("TrackLogActor", fields: [actorId], references: [id])
 }
 
 model RepairRecord {
-  id          String   @id @default(uuid())
-  deviceId    String
-  repairDate  DateTime @default(now())
-  technician  String
-  description String?
-  cost        Float
-  note        String?
-  createdAt   DateTime @default(now())
+  id           String   @id @default(uuid()) @db.Uuid
+  deviceId     String   @db.Uuid
+  repairDate   DateTime @default(now())
+  technicianId String?  @db.Uuid
+  description  String?
+  cost         Float
+  note         String?
+  createdAt    DateTime @default(now())
 
-  device Device @relation(fields: [deviceId], references: [id])
+  device     Device @relation(fields: [deviceId], references: [id])
+  technician Admin? @relation("RepairRecordTechnician", fields: [technicianId], references: [id])
 }
 
 model StatusHistory {
-  id        String     @id @default(uuid())
-  deviceId  String
-  from      StatusEnum
-  to        StatusEnum
-  changedBy String
-  note      String?
-  changedAt DateTime   @default(now())
+  id          String     @id @default(uuid()) @db.Uuid
+  deviceId    String     @db.Uuid
+  from        StatusEnum
+  to          StatusEnum
+  changedById String?    @db.Uuid
+  note        String?
+  changedAt   DateTime   @default(now())
 
-  device Device @relation(fields: [deviceId], references: [id])
+  device    Device @relation(fields: [deviceId], references: [id])
+  changedBy Admin? @relation("StatusHistoryChangedBy", fields: [changedById], references: [id])
 }
 
 model PaymentRecord {
-  id       String        @id @default(uuid())
-  deviceId String
+  id       String        @id @default(uuid()) @db.Uuid
+  deviceId String        @db.Uuid
   amount   Float
   method   PaymentMethod
   paidAt   DateTime      @default(now())
@@ -126,33 +128,57 @@ model PaymentRecord {
   device Device @relation(fields: [deviceId], references: [id])
 }
 
-model AdminUser {
-  id        String     @id @default(uuid())
+model Admin {
+  id              String             @id @default(uuid()) @db.Uuid
+  name            String
+  email           String             @unique
+  password        String
+  role            UserRole
+  createdAt       DateTime           @default(now())
+  activityLogs    AdminActivityLog[]
+  repairJobs      RepairRecord[]     @relation("RepairRecordTechnician")
+  statusChanges   StatusHistory[]    @relation("StatusHistoryChangedBy")
+  trackLogs       TrackLog[]         @relation("TrackLogActor")
+  technicianOf    Device[]           @relation("Technician")
+  changedStatusOf Device[]           @relation("StatusChangedBy")
+}
+
+model Brand {
+  id        String       @id @default(uuid()) @db.Uuid
+  name      String       @unique
+  devices   Device[]
+  models    BrandModel[]
+  createdAt DateTime     @default(now())
+}
+
+model BrandModel {
+  id        String   @id @default(uuid()) @db.Uuid
   name      String
-  email     String     @unique
-  password  String
-  role      UserRole
-  createdAt DateTime   @default(now())
-  activityLogs AdminActivityLog[]
+  brandId   String   @db.Uuid
+  brand     Brand    @relation(fields: [brandId], references: [id])
+  devices   Device[]
+  createdAt DateTime @default(now())
+
+  @@unique([name, brandId])
 }
 
 model AdminActivityLog {
-  id        String   @id @default(uuid())
-  adminId   String
-  deviceId  String
+  id        String   @id @default(uuid()) @db.Uuid
+  adminId   String   @db.Uuid
+  deviceId  String   @db.Uuid
   action    String
   detail    String?
   createdAt DateTime @default(now())
 
-  admin     AdminUser @relation(fields: [adminId], references: [id])
-  device    Device    @relation(fields: [deviceId], references: [id])
+  admin  Admin  @relation(fields: [adminId], references: [id])
+  device Device @relation(fields: [deviceId], references: [id])
 }
 
 model CustomerNote {
-  id         String   @id @default(uuid())
-  customerId String
+  id         String   @id @default(uuid()) @db.Uuid
+  customerId String   @db.Uuid
   note       String
   createdAt  DateTime @default(now())
 
-  customer   Customer @relation(fields: [customerId], references: [id])
+  customer Customer @relation(fields: [customerId], references: [id])
 }

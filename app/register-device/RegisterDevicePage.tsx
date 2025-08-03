@@ -2,13 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
 import { Combobox } from '@headlessui/react';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
 
 const RegisterDevicePage = () => {
   const [brandList, setBrandList] = useState<{ id: string; name: string }[]>([]);
@@ -33,12 +27,12 @@ const RegisterDevicePage = () => {
 
   const [deviceData, setDeviceData] = useState({
     type: 'HDD',
-    brand_id: '',
+    brandId: '',
     model: '',
     serialNumber: '',
     problem: '',
     currentStatus: 'รอรับอุปกรณ์จากลูกค้า',
-    created_at: new Date().toISOString(),
+    createdAt: new Date().toISOString(),
   });
 
   const [loading, setLoading] = useState(false);
@@ -46,21 +40,15 @@ const RegisterDevicePage = () => {
 
   useEffect(() => {
     const fetchCustomers = async () => {
-      const { data, error } = await supabase
-        .from('Customer')
-        .select('id, fullName, phone')
-        .order('createdAt', { ascending: false });
-      if (!error && data) setCustomerList(data);
+      const res = await fetch('/api/customers');
+      const data = await res.json();
+      setCustomerList(data);
     };
 
     const fetchBrands = async () => {
-      const { data, error } = await supabase
-        .from('Brand')
-        .select('id, name')
-        .order('name', { ascending: true });
-      if (!error && data) {
-        setBrandList(data);
-      }
+      const res = await fetch('/api/brands');
+      const data = await res.json();
+      setBrandList(data);
     };
 
     if (!isNewCustomer) fetchCustomers();
@@ -82,28 +70,12 @@ const RegisterDevicePage = () => {
     setLoading(true);
     setError(null);
     try {
-      let customerId = '';
-
-      if (isNewCustomer) {
-        const { data: inserted, error: customerError } = await supabase
-          .from('Customer')
-          .insert([{ ...customerData }])
-          .select()
-          .single();
-        if (customerError) throw customerError;
-        customerId = inserted.id;
-      } else {
-        if (!selectedCustomer) throw new Error('กรุณาเลือกลูกค้า');
-        customerId = selectedCustomer.id;
-      }
-
-      const { error: deviceError } = await supabase.from('Device').insert([
-        {
-          ...deviceData,
-          customer_id: customerId,
-        },
-      ]);
-      if (deviceError) throw deviceError;
+      const res = await fetch('/api/register-device', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isNewCustomer, customerData, selectedCustomer, deviceData }),
+      });
+      if (!res.ok) throw new Error('เกิดข้อผิดพลาดในการส่งข้อมูล');
       router.push('/register-success');
     } catch (err: unknown) {
       console.error(err);
@@ -120,8 +92,8 @@ const RegisterDevicePage = () => {
     query === ''
       ? customerList
       : customerList.filter((c) =>
-        `${c.fullName} ${c.phone}`.toLowerCase().includes(query.toLowerCase())
-      );
+          `${c.fullName} ${c.phone}`.toLowerCase().includes(query.toLowerCase())
+        );
 
   return (
     <section className="min-h-screen flex items-center justify-center bg-gray-100 px-6 py-12">
@@ -213,8 +185,8 @@ const RegisterDevicePage = () => {
             <div>
               <label className="block text-gray-700 mb-2">ยี่ห้อ</label>
               <select
-                name="brand_id"
-                value={deviceData.brand_id}
+                name="brandId"
+                value={deviceData.brandId}
                 onChange={handleDeviceChange}
                 className="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
               >

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
+import { FaUserShield } from "react-icons/fa";
 
 const Header = () => {
   const pathname = usePathname();
@@ -14,7 +15,7 @@ const Header = () => {
   ];
 
   return (
-    <header className="bg-white text-blue-800 shadow-md z-50 relative border-b border-gray-200">
+    <header className="bg-white text-blue-800 shadow-md z-50 relative border-b border-gray-600">
       <div className="max-w-6xl w-full mx-auto flex items-center justify-between px-4 sm:px-6 py-4 sm:py-5">
         {/* Logo */}
         <div className="flex items-center space-x-2">
@@ -39,7 +40,7 @@ const Header = () => {
         </div>
 
         {/* Navigation */}
-        <nav className="flex space-x-2 sm:space-x-4">
+        <nav className="flex space-x-2 sm:space-x-4 items-center">
           {navItems.map((item) => (
             <Link
               key={item.href}
@@ -53,6 +54,15 @@ const Header = () => {
               {item.name}
             </Link>
           ))}
+
+          {/* Admin Login */}
+          <Link
+            href="/admin/login"
+            className="ml-2 px-3 py-1.5 text-sm text-blue-600 rounded-full hover:bg-blue-50 hover:text-blue-700 transition"
+            aria-label="Admin Login"
+          >
+            <FaUserShield size={20} />
+          </Link>
         </nav>
       </div>
     </header>

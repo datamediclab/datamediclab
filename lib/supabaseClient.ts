@@ -1,10 +1,6 @@
-// src/lib/supabaseClient.ts
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-console.log('✅ SUPABASE_URL =', supabaseUrl);
-console.log('✅ SUPABASE_KEY =', supabaseKey);
+// lib/supabaseClient.ts
+import { Database } from '@/types/supabase';
+import { createBrowserSupabaseClient } from '@supabase/auth-helpers-nextjs';
 
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+export const supabaseClient = createBrowserSupabaseClient<Database>();
