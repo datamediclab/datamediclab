@@ -1,11 +1,17 @@
 // =============================
-// ✅ features/customer/store/useCustomerStore.ts (PATCH: robust 405 fallback)
+// ✅ features/customer/store/useCustomerStore.ts (PATCH: replace axios with fetch)
 // =============================
-import { create } from "zustand";
-import axios from "axios";
+import { create } from 'zustand';
 
-type StoreCustomer = { id: string; fullName: string; phone: string; email?: string };
-type StoreCustomerHistoryItem = {
+// Types
+export type StoreCustomer = {
+  id: string;
+  fullName: string;
+  phone: string;
+  email?: string;
+};
+
+export type StoreCustomerHistoryItem = {
   id: string;
   deviceType?: string;
   brandName?: string;
@@ -16,52 +22,77 @@ type StoreCustomerHistoryItem = {
   createdAt: string;
 };
 
-type CustomerStore = {
+export type CustomerStore = {
   searchCustomerAction: (q: string) => Promise<StoreCustomer[]>;
   fetchCustomerHistoryAction: (id: string | number) => Promise<StoreCustomerHistoryItem[]>;
 };
 
 const useCustomerStore = create<CustomerStore>(() => ({
+  // 🔎 Search customers (GET /api/customer/search?q=...)
   searchCustomerAction: async (q) => {
     try {
-      const res = await axios.get("/api/customer/search", { params: { q } });
-      return Array.isArray(res.data) ? (res.data as StoreCustomer[]) : [];
+      const url = `/api/customer/search?q=${encodeURIComponent(q)}`;
+      const res = await fetch(url, {
+        method: 'GET',
+        cache: 'no-store',
+      });
+
+      if (!res.ok) {
+        console.error('searchCustomerAction failed:', res.status, res.statusText);
+        return [];
+      }
+
+      const data = await res.json();
+      return Array.isArray(data) ? (data as StoreCustomer[]) : [];
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "ค้นหาลูกค้าไม่สำเร็จ";
-      console.error("searchCustomerAction failed:", msg);
+      const msg = err instanceof Error ? err.message : 'ค้นหาลูกค้าไม่สำเร็จ';
+      console.error('searchCustomerAction error:', msg);
       return [];
     }
   },
 
+  // 📜 Customer history with graceful 405 fallback (GET → POST)
   fetchCustomerHistoryAction: async (id) => {
-  try {
-    // Primary: GET with query string
-    const res = await axios.get("/api/register-device/history", { params: { customerId: id } });
-    return Array.isArray(res.data) ? (res.data as StoreCustomerHistoryItem[]) : [];
-  } catch (err: unknown) {
-    // Safe narrowing without `any` per eslint rules
-    let status: number | undefined = undefined;
-    if (typeof err === "object" && err !== null && "response" in err) {
-      const maybeResp = (err as { response?: { status?: number } }).response;
-      status = maybeResp?.status;
-    }
+    const idStr = encodeURIComponent(String(id));
 
-    if (status === 405) {
-      try {
-        const res = await axios.post("/api/register-device/history", { customerId: id });
-        return Array.isArray(res.data) ? (res.data as StoreCustomerHistoryItem[]) : [];
-      } catch (postErr: unknown) {
-        const message = postErr instanceof Error ? postErr.message : "โหลดประวัติลูกค้า (POST) ไม่สำเร็จ";
-        console.error("fetchCustomerHistoryAction POST failed:", message);
+    try {
+      // Primary: GET with query string
+      const res = await fetch(`/api/register-device/history?customerId=${idStr}`, {
+        method: 'GET',
+        cache: 'no-store',
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        return Array.isArray(data) ? (data as StoreCustomerHistoryItem[]) : [];
+      }
+
+      // Fallback to POST if backend only accepts it
+      if (res.status === 405) {
+        const resPost = await fetch('/api/register-device/history', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ customerId: id }),
+          cache: 'no-store',
+        });
+
+        if (resPost.ok) {
+          const data = await resPost.json();
+          return Array.isArray(data) ? (data as StoreCustomerHistoryItem[]) : [];
+        }
+
+        console.error('fetchCustomerHistoryAction POST failed:', resPost.status, resPost.statusText);
         return [];
       }
-    }
 
-    const message = err instanceof Error ? err.message : "โหลดประวัติลูกค้าไม่สำเร็จ";
-    console.error("fetchCustomerHistoryAction failed:", message);
-    return [];
-  }
-},
+      console.error('fetchCustomerHistoryAction GET failed:', res.status, res.statusText);
+      return [];
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'โหลดประวัติลูกค้าไม่สำเร็จ';
+      console.error('fetchCustomerHistoryAction error:', msg);
+      return [];
+    }
+  },
 }));
 
 export default useCustomerStore;
