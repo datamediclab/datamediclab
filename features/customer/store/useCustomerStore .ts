@@ -1,5 +1,5 @@
 // =============================
-// ✅ features/customer/store/useCustomerStore.ts (PATCH: replace axios with fetch)
+// ✅ features/customer/store/useCgitustomerStore.ts (PATCH: replace axios with fetch)
 // =============================
 import { create } from 'zustand';
 

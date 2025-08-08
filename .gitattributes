@@ -1,0 +1,16 @@
+$gitattributes = @"
+*           text=auto eol=lf
+*.prisma    text eol=lf
+*.ts        text eol=lf
+*.tsx       text eol=lf
+*.js        text eol=lf
+*.jsx       text eol=lf
+*.json      text eol=lf
+*.md        text eol=lf
+*.sh        text eol=lf
+# Windows scripts keep CRLF
+*.bat       text eol=crlf
+*.cmd       text eol=crlf
+*.ps1       text eol=crlf
+"@
+[System.IO.File]::WriteAllText(".gitattributes", $gitattributes, [System.Text.UTF8Encoding]::new($false))
