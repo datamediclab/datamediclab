@@ -3,21 +3,28 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 
-// โปรเจกต์นี้ใช้รูปแบบ params เป็น Promise ให้สอดคล้องทั้งแอป
-export async function GET(
-  _req: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
+// ให้ตรงกับรูปแบบในไฟล์ brand: ใช้ params เป็น Promise
+interface BrandModelContext {
+  params: Promise<{ id: string }>;
+}
+
+// GET /api/admin/brand-model/[id]
+export async function GET(_req: NextRequest, context: BrandModelContext) {
   try {
     const { id: idStr } = await context.params;
-    const id = Number(idStr);
-    if (Number.isNaN(id)) return NextResponse.json({ error: 'ID ไม่ถูกต้อง' }, { status: 400 });
+    const id = parseInt(idStr, 10);
+    if (Number.isNaN(id)) {
+      return NextResponse.json({ error: 'ID ไม่ถูกต้อง' }, { status: 400 });
+    }
 
     const brandModel = await prisma.brandModel.findUnique({
       where: { id },
       include: { brand: true },
     });
-    if (!brandModel) return NextResponse.json({ error: 'ไม่พบข้อมูลรุ่นของแบรนด์' }, { status: 404 });
+
+    if (!brandModel) {
+      return NextResponse.json({ error: 'ไม่พบข้อมูลรุ่นของแบรนด์' }, { status: 404 });
+    }
 
     return NextResponse.json(brandModel);
   } catch (error) {
@@ -27,14 +34,14 @@ export async function GET(
   }
 }
 
-export async function PUT(
-  req: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
+// PUT /api/admin/brand-model/[id]
+export async function PUT(req: NextRequest, context: BrandModelContext) {
   try {
     const { id: idStr } = await context.params;
-    const id = Number(idStr);
-    if (Number.isNaN(id)) return NextResponse.json({ error: 'ID ไม่ถูกต้อง' }, { status: 400 });
+    const id = parseInt(idStr, 10);
+    if (Number.isNaN(id)) {
+      return NextResponse.json({ error: 'ID ต้องเป็นตัวเลข' }, { status: 400 });
+    }
 
     const body = await req.json();
     if (typeof body !== 'object' || body === null) {
@@ -42,12 +49,20 @@ export async function PUT(
     }
 
     const { name, brandId } = body as { name?: string; brandId?: number | string };
-    if (!name && brandId === undefined) {
+
+    if (name === undefined && brandId === undefined) {
       return NextResponse.json({ error: 'กรุณาระบุ name หรือ brandId อย่างน้อยหนึ่งอย่าง' }, { status: 400 });
     }
 
     const dataToUpdate: { name?: string; brandId?: number } = {};
-    if (name) dataToUpdate.name = String(name);
+
+    if (name !== undefined) {
+      const trimmed = String(name).trim();
+      if (!trimmed) {
+        return NextResponse.json({ error: 'name ต้องไม่เป็นค่าว่าง' }, { status: 400 });
+      }
+      dataToUpdate.name = trimmed;
+    }
 
     if (brandId !== undefined) {
       const numericBrandId = Number(brandId);
@@ -55,7 +70,9 @@ export async function PUT(
         return NextResponse.json({ error: 'brandId ต้องเป็นตัวเลข' }, { status: 400 });
       }
       const brandExists = await prisma.brand.findUnique({ where: { id: numericBrandId } });
-      if (!brandExists) return NextResponse.json({ error: `ไม่พบแบรนด์ ID ${numericBrandId}` }, { status: 404 });
+      if (!brandExists) {
+        return NextResponse.json({ error: `ไม่พบแบรนด์ ID: ${numericBrandId}` }, { status: 404 });
+      }
       dataToUpdate.brandId = numericBrandId;
     }
 
@@ -67,22 +84,29 @@ export async function PUT(
     return NextResponse.json(updated);
   } catch (error) {
     console.error('❌ PUT BrandModel Error:', error);
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
-      return NextResponse.json({ error: 'ไม่พบข้อมูลรุ่นของแบรนด์ที่ต้องการแก้ไข' }, { status: 404 });
+
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === 'P2002') {
+        return NextResponse.json({ error: 'ชื่อรุ่นซ้ำในแบรนด์นี้' }, { status: 409 });
+      }
+      if (error.code === 'P2025') {
+        return NextResponse.json({ error: 'ไม่พบข้อมูลรุ่นของแบรนด์ที่ต้องการแก้ไข' }, { status: 404 });
+      }
     }
+
     const message = error instanceof Error ? error.message : 'ไม่สามารถแก้ไขข้อมูลได้';
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
-export async function DELETE(
-  _req: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
+// DELETE /api/admin/brand-model/[id]
+export async function DELETE(_req: NextRequest, context: BrandModelContext) {
   try {
     const { id: idStr } = await context.params;
-    const id = Number(idStr);
-    if (Number.isNaN(id)) return NextResponse.json({ error: 'ID ต้องเป็นตัวเลข' }, { status: 400 });
+    const id = parseInt(idStr, 10);
+    if (Number.isNaN(id)) {
+      return NextResponse.json({ error: 'ID ต้องเป็นตัวเลข' }, { status: 400 });
+    }
 
     const deleted = await prisma.brandModel.delete({ where: { id } });
     return NextResponse.json({ success: true, deleted });
