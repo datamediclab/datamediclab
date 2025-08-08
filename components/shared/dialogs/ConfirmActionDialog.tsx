@@ -1,6 +1,6 @@
 // components/shared/dialogs/ConfirmActionDialog.tsx
 
-import { Dialog, DialogContent } from "@/components/shared/dialogs/DialogWrapper";
+import { Dialog, DialogContent, DialogTitle } from "@/components/shared/dialogs/DialogWrapper";
 import { Button } from "@/components/ui/Button";
 
 const ConfirmActionDialog = ({
@@ -19,13 +19,13 @@ const ConfirmActionDialog = ({
   return (
     <Dialog open={open} onOpenChange={onCancel}>
       <DialogContent className="text-center space-y-4">
-        <h2 className="text-lg font-semibold">{title}</h2>
+        <DialogTitle className="text-lg font-semibold">{title}</DialogTitle>
         <p className="text-sm text-gray-500 dark:text-gray-400">{description}</p>
         <div className="flex justify-center gap-4 mt-4">
-          <Button variant="outline" onClick={onCancel}>
+          <Button variant="secondary" onClick={onCancel}>
             ยกเลิก
           </Button>
-          <Button variant="destructive" onClick={onConfirm}>
+          <Button variant="danger" onClick={onConfirm}>
             ยืนยัน
           </Button>
         </div>

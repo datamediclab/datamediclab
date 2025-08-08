@@ -1,27 +1,55 @@
-// src/app/api/track-status/route.js
+// app/api/track-status/route.js
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabaseClient";
+import prisma from "@/lib/prisma"; // ✨ แก้ไข: เปลี่ยนมาใช้ Prisma
 
 export async function GET(req) {
-  const { searchParams } = new URL(req.url);
-  const phone = searchParams.get("phone");
+  try {
+    const { searchParams } = new URL(req.url);
+    const phone = searchParams.get("phone");
 
-  if (!phone)
-    return NextResponse.json({ error: "No phone provided" }, { status: 400 });
+    if (!phone) {
+      return NextResponse.json(
+        { error: "กรุณาระบุหมายเลขโทรศัพท์" },
+        { status: 400 }
+      );
+    }
 
-  const { data, error } = await supabase
-    .from("device_registrations")
-    .select("currentStatus, createdAt") // เปลี่ยนจาก problem → currentStatus
-    .eq("phone", phone)
-    .order("createdAt", { ascending: false })
-    .limit(1)
-    .single();
+    // ✨ แก้ไข: เปลี่ยนมาใช้ Prisma ในการค้นหาข้อมูล
+    // สมมติว่า Model ของคุณใน schema.prisma ชื่อ 'deviceRegistration'
+    const registration = await prisma.deviceRegistration.findFirst({
+      where: {
+        phone: phone,
+      },
+      orderBy: {
+        createdAt: 'desc', // หรือ 'createdAt' ขึ้นอยู่กับชื่อ field ใน schema
+      },
+    });
 
-  if (error || !data)
-    return NextResponse.json({ currentStatus: "ไม่พบข้อมูล" }, { status: 404 });
+    if (!registration) {
+      return NextResponse.json(
+        { error: "ไม่พบข้อมูลการลงทะเบียนสำหรับหมายเลขโทรศัพท์นี้" },
+        { status: 404 }
+      );
+    }
+    
+    return NextResponse.json({
+      currentStatus: registration.currentStatus || "ยังไม่มีการอัปเดตสถานะ",
+      customerName: registration.customerName, // หรือ 'customer_name'
+      deviceModel: registration.deviceModel, // หรือ 'device_model'
+      updatedAt: new Date(registration.createdAt).toLocaleString("th-TH", {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
+    });
 
-  return NextResponse.json({
-    currentStatus: data.currentStatus || "ยังไม่มีสถานะ",
-    updatedAt: new Date(data.createdAt).toLocaleString("th-TH"),
-  });
+  } catch (err) {
+    console.error("Unexpected API error:", err);
+    return NextResponse.json(
+      { error: "เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์" },
+      { status: 500 }
+    );
+  }
 }

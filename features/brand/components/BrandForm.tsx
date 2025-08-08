@@ -2,80 +2,67 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useBrandStore } from '../store/useBrandStore';
+import { useForm, SubmitHandler } from 'react-hook-form';
 
-interface BrandFormProps {
-  initialName?: string;
-  brandId?: string;
-  isEdit?: boolean;
+// กำหนด Type สำหรับข้อมูลในฟอร์ม
+type FormInputs = {
+  name: string;
+};
+
+// กำหนด Type สำหรับ Props ของคอมโพเนนต์
+export interface BrandFormProps {
+  mode: 'create' | 'edit';
+  // ✨ แก้ไข: เพิ่มบรรทัดนี้เข้าไปเพื่อให้ BrandForm รู้จัก prop 'onSubmit'
+  onSubmit: (name: string) => Promise<void>; 
+  initialData?: { name: string }; // สำหรับใช้ในโหมดแก้ไข
 }
 
-const BrandForm = ({ initialName = '', brandId, isEdit = false }: BrandFormProps) => {
-  const [name, setName] = useState(initialName);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [loading, setLoading] = useState(false);
+const BrandForm = ({ mode, onSubmit, initialData }: BrandFormProps) => {
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    reset,
+  } = useForm<FormInputs>({
+    defaultValues: {
+      name: initialData?.name || '',
+    },
+  });
 
-  const { createBrandAction, updateBrandAction } = useBrandStore();
-
-  useEffect(() => {
-    setName(initialName);
-  }, [initialName]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setSuccess('');
-
-    if (!name.trim()) {
-      setError('กรุณากรอกชื่อแบรนด์');
-      return;
-    }
-
-    try {
-      setLoading(true);
-      if (isEdit && brandId) {
-        await updateBrandAction(brandId, name.trim());
-        setSuccess('แก้ไขแบรนด์สำเร็จ');
-      } else {
-        await createBrandAction(name.trim());
-        setSuccess('เพิ่มแบรนด์สำเร็จ');
-        setName('');
-      }
-    } catch (err) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError('เกิดข้อผิดพลาดที่ไม่รู้จัก');
-      }
-    } finally {
-      setLoading(false);
+  // ฟังก์ชันที่จะทำงานเมื่อกดปุ่ม Submit
+  const processSubmit: SubmitHandler<FormInputs> = async (data) => {
+    // เรียกใช้ฟังก์ชัน onSubmit ที่ได้รับมาจาก parent component
+    await onSubmit(data.name);
+    // ถ้าเป็นโหมดสร้าง ให้ล้างข้อมูลในฟอร์ม
+    if (mode === 'create') {
+      reset();
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 mb-6">
+    <form onSubmit={handleSubmit(processSubmit)} className="space-y-4  rounded-lg shadow-md">
       <div>
-        <label className="block font-medium">ชื่อแบรนด์</label>
+        <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+          ชื่อแบรนด์
+        </label>
         <input
+          id="name"
           type="text"
-          className="mt-1 block w-full border border-gray-300 rounded px-3 py-2"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
+          {...register('name', { required: 'กรุณากรอกชื่อแบรนด์' })}
+          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+          disabled={isSubmitting}
         />
+        {errors.name && <p className="mt-2 text-sm text-red-600">{errors.name.message}</p>}
       </div>
-
-      {error && <p className="text-red-600">{error}</p>}
-      {success && <p className="text-green-600">{success}</p>}
-
-      <button
-        type="submit"
-        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
-        disabled={loading}
-      >
-        {loading ? 'กำลังบันทึก...' : isEdit ? 'บันทึกการแก้ไข' : 'เพิ่มแบรนด์'}
-      </button>
+      <div>
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+        >
+          {isSubmitting ? 'กำลังบันทึก...' : (mode === 'create' ? 'เพิ่มแบรนด์' : 'บันทึกการเปลี่ยนแปลง')}
+        </button>
+      </div>
     </form>
   );
 };

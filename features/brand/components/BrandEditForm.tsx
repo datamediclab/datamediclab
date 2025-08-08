@@ -1,3 +1,4 @@
+
 // BrandEditForm.tsx
 
 "use client";
@@ -11,22 +12,31 @@ interface BrandEditFormProps {
 }
 
 const BrandEditForm = ({ brandId }: BrandEditFormProps) => {
-  const { brandList, fetchBrandListAction, updateBrandAction } = useBrandStore();
+  const { updateBrandAction, getBrandByIdAction } = useBrandStore();
   const [name, setName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
-    fetchBrandListAction();
-  }, [fetchBrandListAction]);
-
-  useEffect(() => {
-    const brand = brandList.find((b) => b.id === brandId);
-    if (brand) {
-      setName(brand.name);
-    }
-  }, [brandId, brandList]);
+    const fetchData = async () => {
+      try {
+        const brand = await getBrandByIdAction(brandId);
+        if (brand) {
+          setName(brand.name);
+        } else {
+          setError("ไม่พบข้อมูลแบรนด์");
+        }
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : "ไม่พบข้อมูลแบรนด์";
+        setError(errorMessage);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [brandId, getBrandByIdAction]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,12 +46,15 @@ const BrandEditForm = ({ brandId }: BrandEditFormProps) => {
     try {
       await updateBrandAction(brandId, { name });
       router.push("/admin/brand"); // ✅ redirect กลับหน้า list
-    } catch (err: any) {
-      setError(err.message || "เกิดข้อผิดพลาด");
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "เกิดข้อผิดพลาด";
+      setError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  if (loading) return <p className="text-white">กำลังโหลดข้อมูล...</p>;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">

@@ -1,20 +1,14 @@
+
+
 // app/api/admin/create/route.ts
 import { NextResponse } from 'next/server';
-import { PrismaClient, UserRole } from '@prisma/client';
-import { createClient } from '@supabase/supabase-js';
+import prisma from '@/lib/prisma'; // ✅ ใช้ Prisma จากไฟล์กลาง ตามที่กำหนด
 import bcrypt from 'bcryptjs';
-
-const prisma = new PrismaClient();
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import type { UserRole } from '@prisma/client';
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const { email, password, name, role } = body as {
+    const { email, password, name, role } = (await req.json()) as {
       email: string;
       password: string;
       name: string;
@@ -23,47 +17,41 @@ export async function POST(req: Request) {
 
     if (!email || !password || !name) {
       return NextResponse.json(
-        { error: 'Missing required fields.' },
+        { error: 'กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน' },
         { status: 400 }
       );
     }
 
-    const userRole = role ?? 'ADMIN';
-
-    // 1. Create user in Supabase Auth
-    const { data: user, error } = await supabase.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-    });
-
-    if (error || !user?.user) {
-      console.error('❌ Supabase user creation failed:', error?.message);
-      return NextResponse.json(
-        { error: 'ไม่สามารถสร้างผู้ใช้งานในระบบได้' },
-        { status: 500 }
-      );
+    // ตรวจสอบอีเมลซ้ำ
+    const exists = await prisma.admin.findUnique({ where: { email } });
+    if (exists) {
+      return NextResponse.json({ error: 'อีเมลนี้ถูกใช้งานแล้ว' }, { status: 409 });
     }
 
-    // 2. Hash password securely
+    // แฮชรหัสผ่านก่อนบันทึก
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 3. Create record in Prisma (Admin table)
     const admin = await prisma.admin.create({
       data: {
         email,
         name,
-        password: hashedPassword,
-        role: userRole,
+        password: hashedPassword, // เปลี่ยนชื่อคีย์เป็น passwordHash หาก schema ใช้ชื่อนั้น
+        role: (role ?? 'ADMIN') as UserRole,
+      },
+      // เลือกเฉพาะฟิลด์ที่ model มีจริง เพื่อเลี่ยง TS error
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        createdAt: true,
+        // updatedAt: true, // ❌ ตัดออกเพราะไม่มีใน AdminSelect ของ schema ปัจจุบัน
       },
     });
 
     return NextResponse.json({ success: true, admin }, { status: 201 });
   } catch (err) {
-    console.error('❌ Unexpected error:', (err as Error).message);
-    return NextResponse.json(
-      { error: 'เกิดข้อผิดพลาดในการสร้างแอดมิน' },
-      { status: 500 }
-    );
+    const message = err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการสร้างแอดมิน';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -1,3 +1,5 @@
+// components/shared/dialogs/DialogWrapper.tsx
+
 "use client";
 
 import * as DialogPrimitive from "@radix-ui/react-dialog";
@@ -7,6 +9,9 @@ import { ReactNode } from "react";
 
 export const Dialog = DialogPrimitive.Root;
 export const DialogTrigger = DialogPrimitive.Trigger;
+export const DialogTitle = DialogPrimitive.Title;
+export const DialogDescription = DialogPrimitive.Description;
+export const DialogClose = DialogPrimitive.Close;
 
 export const DialogContent = ({ className, children, ...props }: DialogPrimitive.DialogContentProps & { children: ReactNode }) => (
   <DialogPrimitive.Portal>

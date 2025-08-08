@@ -6,10 +6,9 @@ import { useParams } from "next/navigation";
 import AdminLayout from "@/layouts/AdminLayout";
 import BrandEditForm from "@/features/brand/components/BrandEditForm";
 
-
 const EditBrandPage = () => {
-  const params = useParams();
-  const idParam = params && 'id' in params ? params.id : null;
+  const params = useParams() as { id?: string | string[] };
+  const idParam = params && "id" in params ? params.id : null;
   const id = Array.isArray(idParam) ? idParam[0] : idParam;
 
   return (

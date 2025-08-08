@@ -25,6 +25,17 @@ const SidebarAdmin = () => {
           </Link>
         </li>
         {/* เพิ่มเมนูอื่น ๆ ที่เกี่ยวข้องกับ Admin ได้ที่นี่ */}
+        <li>
+          <button
+            onClick={async () => {
+              await fetch('/api/admin/logout', { method: 'POST' });
+              window.location.href = '/';
+            }}
+            className="w-full text-left hover:text-red-400"
+          >
+            ออกจากระบบ
+          </button>
+        </li>
       </ul>
     </aside>
   );

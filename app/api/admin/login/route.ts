@@ -1,43 +1,63 @@
-// 📄 app/api/admin/login/route.ts
+// app/api/admin/login/route.ts
+import prisma from '@/lib/prisma';
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
-import { createServerClient } from '@/lib/supabaseServer';
-import { validateAdmin } from '@/lib/validateAdmin';
+import { compare } from 'bcryptjs';
+import { sign } from 'jsonwebtoken';
+import { serialize } from 'cookie';
 
-export async function POST(request: Request) {
+export const dynamic = 'force-dynamic';
+
+export async function POST(req: Request) {
   try {
-    const { email, password } = await request.json();
-    const cookieStore = await cookies();
-    const supabase = await createServerClient(cookieStore);
+    const { email, password } = await req.json();
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password
+    const admin = await prisma.admin.findUnique({
+      where: { email },
     });
-
-    if (error || !data.user) {
-      return NextResponse.json({ message: 'เข้าสู่ระบบไม่สำเร็จ' }, { status: 401 });
-    }
-
-    const admin = await validateAdmin(supabase, data.user.id);
 
     if (!admin) {
-      return NextResponse.json({ message: 'ไม่พบสิทธิ์ผู้ดูแลระบบ' }, { status: 403 });
+      return NextResponse.json({ success: false, error: 'ไม่พบบัญชีผู้ดูแล' }, { status: 401 });
     }
 
-    // ✅ แก้ให้ตั้ง cookie ด้วย NextResponse อย่างถูกต้อง (secure: false สำหรับ localhost)
-    const response = NextResponse.json({ admin });
-    response.cookies.set('adminId', admin.id, {
-      path: '/',
+    const isPasswordValid = await compare(password, admin.password);
+    if (!isPasswordValid) {
+      return NextResponse.json({ success: false, error: 'รหัสผ่านไม่ถูกต้อง' }, { status: 401 });
+    }
+
+    // ปรับให้ตรงกับฟิลด์ที่มีอยู่จริงใน Prisma schema (ลบ is_super_admin ถ้าไม่มี)
+    const token = sign(
+      {
+        id: admin.id,
+        email: admin.email,
+        role: 'ADMIN'
+      },
+      process.env.JWT_SECRET as string,
+      { expiresIn: '7d' }
+    );
+
+    const cookie = serialize('admin-token', token, {
       httpOnly: true,
+      path: '/',
+      maxAge: 60 * 60 * 24 * 7,
       sameSite: 'lax',
-      secure: false, // 👈 ปิด secure สำหรับ dev
-      maxAge: 60 * 60 * 24 * 7 // 7 วัน
+      secure: process.env.NODE_ENV === 'production',
     });
 
-    return response;
-  } catch (error) {
-    console.error('[admin/login] error:', error);
-    return NextResponse.json({ message: 'เกิดข้อผิดพลาดในระบบ' }, { status: 500 });
+    return new NextResponse(
+      JSON.stringify({
+        success: true,
+        user: {
+          id: admin.id,
+          email: admin.email
+        }
+      }),
+      {
+        status: 200,
+        headers: { 'Set-Cookie': cookie, 'Content-Type': 'application/json' }
+      }
+    );
+  } catch (err: unknown) {
+    console.error('Login API Error:', err);
+    return NextResponse.json({ success: false, error: 'เกิดข้อผิดพลาดภายในระบบ' }, { status: 500 });
   }
 }

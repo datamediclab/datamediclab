@@ -33,8 +33,15 @@ const CreateAdminPage = () => {
       setEmail('');
       setPassword('');
       setName('');
-    } catch (err: any) {
-      setError(err.message || 'เกิดข้อผิดพลาดในการสร้างผู้ดูแล');
+
+      // 👉 Redirect หลังสร้างสำเร็จ
+      router.push('/admin/login');
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('เกิดข้อผิดพลาดในการสร้างผู้ดูแล');
+      }
     } finally {
       setLoading(false);
     }

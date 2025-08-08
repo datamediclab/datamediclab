@@ -1,12 +1,26 @@
 import { useEffect, useState } from 'react';
 
+import { useBrandStore } from '@/features/brand/store/useBrandStore';
+import useCustomerStore from '@/features/customer/store/useCustomerStore ';
+
+
+type DeviceFormData = {
+  customerId: string;
+  brandId: string;
+  deviceType: string;
+  capacity: string;
+  serialNumber: string;
+  description: string;
+  currentStatus: string;
+};
+
 interface DeviceFormProps {
-  onSubmit: (formData: any) => void;
+  onSubmit: (formData: DeviceFormData) => void;
   isSubmitting: boolean;
 }
 
 const DeviceForm = ({ onSubmit, isSubmitting }: DeviceFormProps) => {
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<DeviceFormData>({
     customerId: '',
     brandId: '',
     deviceType: 'HDD',
@@ -16,23 +30,18 @@ const DeviceForm = ({ onSubmit, isSubmitting }: DeviceFormProps) => {
     currentStatus: 'WAITING_FOR_CUSTOMER_DEVICE',
   });
 
-  const [customers, setCustomers] = useState<any[]>([]);
-  const [brands, setBrands] = useState<any[]>([]);
+  const { searchCustomerAction } = useCustomerStore();
+  const { brandList, fetchBrandListAction } = useBrandStore();
+  const [customerList, setCustomerList] = useState<{ id: string; fullName: string }[]>([]);
 
   useEffect(() => {
-    // Load customers and brands
-    const fetchInitialData = async () => {
-      const [customerRes, brandRes] = await Promise.all([
-        fetch('/api/customer'),
-        fetch('/api/brand'),
-      ]);
-      const customers = await customerRes.json();
-      const brands = await brandRes.json();
-      setCustomers(customers);
-      setBrands(brands);
+    const loadCustomers = async () => {
+      const customers = await searchCustomerAction('');
+      setCustomerList(customers);
     };
-    fetchInitialData();
-  }, []);
+    loadCustomers();
+    fetchBrandListAction();
+  }, [searchCustomerAction, fetchBrandListAction]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -50,7 +59,7 @@ const DeviceForm = ({ onSubmit, isSubmitting }: DeviceFormProps) => {
         <label className="block font-medium">ลูกค้า</label>
         <select name="customerId" value={formData.customerId} onChange={handleChange} required className="w-full border p-2">
           <option value="">-- เลือกลูกค้า --</option>
-          {customers.map((c) => (
+          {customerList.map((c) => (
             <option key={c.id} value={c.id}>{c.fullName}</option>
           ))}
         </select>
@@ -60,7 +69,7 @@ const DeviceForm = ({ onSubmit, isSubmitting }: DeviceFormProps) => {
         <label className="block font-medium">ยี่ห้อ</label>
         <select name="brandId" value={formData.brandId} onChange={handleChange} required className="w-full border p-2">
           <option value="">-- เลือกยี่ห้อ --</option>
-          {brands.map((b) => (
+          {brandList.map((b) => (
             <option key={b.id} value={b.id}>{b.name}</option>
           ))}
         </select>
