@@ -1,11 +1,10 @@
 // app/api/admin/brand/route.ts 
 
-import { prisma } from '@/lib/prisma'; // ✨ แก้ไข: นำเข้า Prisma จากไฟล์กลาง
+import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
+import { Prisma } from '@prisma/client';
 
-// บังคับให้ใช้ Node.js runtime (Prisma ใช้ไม่ได้บน Edge)
 export const runtime = 'nodejs';
-// กัน cache ระหว่างดีบั๊ก และให้รันเสมอจากฟังก์ชัน
 export const dynamic = 'force-dynamic';
 
 export const GET = async () => {
@@ -32,10 +31,16 @@ export const GET = async () => {
 
 export const POST = async (req: Request) => {
   try {
-    const body = await req.json();
-    const { name } = body as { name?: string };
+    // 4) Validation เข้มขึ้น + Content-Type
+    if (!req.headers.get('content-type')?.includes('application/json')) {
+      return NextResponse.json({ ok: false, error: 'Unsupported Content-Type' }, { status: 415 });
+    }
 
-    if (!name || typeof name !== 'string') {
+    const body = await req.json();
+    const nameRaw = (body as { name?: string }).name;
+    const name = typeof nameRaw === 'string' ? nameRaw.trim() : '';
+
+    if (name.length === 0) {
       return NextResponse.json({ ok: false, error: 'ชื่อแบรนด์ไม่ถูกต้อง' }, { status: 400 });
     }
 
@@ -45,8 +50,14 @@ export const POST = async (req: Request) => {
     }
 
     const newBrand = await prisma.brand.create({ data: { name } });
-    return NextResponse.json({ ok: true, data: newBrand });
+    // 1) คืน 201 เมื่อสร้างสำเร็จ
+    return NextResponse.json({ ok: true, data: newBrand }, { status: 201 });
   } catch (error: unknown) {
+    // 3) รองรับ Unique Constraint
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      return NextResponse.json({ ok: false, error: 'ข้อมูลซ้ำ (unique)' }, { status: 409 });
+    }
+
     const message = error instanceof Error ? error.message : String(error);
     console.error('POST /api/admin/brand', message);
     const meta = {
