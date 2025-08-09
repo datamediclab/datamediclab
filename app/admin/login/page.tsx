@@ -69,7 +69,7 @@ const AdminLoginPage = () => {
             <label className="block mb-1 font-semibold text-gray-800">อีเมล</label>
             <input
               type="email"
-              className="w-full p-2 border border-gray-300 rounded text-gray-900"
+              className="w-full p-2 border border-gray-400 rounded text-gray-900"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
