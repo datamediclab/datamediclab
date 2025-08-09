@@ -23,7 +23,7 @@ const ServicesPage = () => {
       </div>
 
       {/* จุดเด่น */}
-      <div className="bg-white shadow-md rounded-lg p-6 max-w-xl w-full mb-12">
+      <div className="bg-white shadow-md rounded-lg p-6 max-w-xl w-full mb-2">
         <h2 className="text-lg md:text-xl font-semibold text-blue-800 mb-4">
           จุดเด่นของบริการเรา
         </h2>

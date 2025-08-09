@@ -1,4 +1,4 @@
-// app/api/_debug/db/route.ts
+// app/api/debug/db/route.ts
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
