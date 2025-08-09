@@ -1,63 +1,59 @@
-// app/api/admin/brand-model/route.ts
-import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma'; // ✨ แก้ไข: นำเข้า Prisma จากไฟล์กลางให้ถูกต้อง
+// app/api/admin/brand-model/route.ts 
 
+import { prisma } from '@/lib/prisma'; // ✨ แก้ไข: นำเข้า Prisma จากไฟล์กลาง
+import { NextResponse } from 'next/server';
+
+// Prisma ใช้ไม่ได้บน Edge — บังคับ Node.js runtime
+export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// ✅ GET: ดึงข้อมูลรุ่นของแบรนด์ทั้งหมด
 export const GET = async () => {
   try {
-    const brandModels = await prisma.brandModel.findMany({
-      orderBy: { createdAt: 'desc' },
-      include: {
-        brand: true, // ✨ เพิ่ม: ดึงข้อมูลแบรนด์ที่เกี่ยวข้องมาด้วย
+    const models = await prisma.brandModel.findMany({
+      select: {
+        id: true,
+        name: true,
+        brand: { select: { id: true, name: true } },
       },
+      orderBy: [{ brand: { name: 'asc' } }, { name: 'asc' }],
     });
-    return NextResponse.json(brandModels);
-  } catch (error) {
-    console.error('GET /api/admin/brand-model error:', error);
-    const message = error instanceof Error ? error.message : 'เกิดข้อผิดพลาดไม่ทราบสาเหตุ';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ ok: true, data: models });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    // eslint-disable-next-line no-console
+    console.error('GET /api/admin/brand-model', message);
+    return NextResponse.json({ ok: false, error: 'Internal Server Error' }, { status: 500 });
   }
 };
 
-// ✅ POST: สร้างรุ่นของแบรนด์ใหม่
 export const POST = async (req: Request) => {
   try {
-    const { name, brandId } = await req.json();
+    const body = await req.json();
+    let { name, brandId } = body as { name?: string; brandId?: number | string };
 
-    // 1. ตรวจสอบข้อมูลนำเข้า
-    if (!name || !brandId) {
-      return NextResponse.json(
-        { error: 'กรุณาระบุชื่อรุ่นและ ID ของแบรนด์' },
-        { status: 400 }
-      );
+    name = typeof name === 'string' ? name.trim() : undefined;
+    if (!name) {
+      return NextResponse.json({ ok: false, error: 'ชื่อรุ่นไม่ถูกต้อง' }, { status: 400 });
     }
 
-    // 2. ตรวจสอบว่ามีแบรนด์นี้อยู่จริงหรือไม่
-    const brandExists = await prisma.brand.findUnique({
-      where: { id: Number(brandId) },
-    });
-
-    if (!brandExists) {
-      return NextResponse.json(
-        { error: `ไม่พบแบรนด์ที่มี ID: ${brandId}` },
-        { status: 404 }
-      );
+    if (typeof brandId === 'string') brandId = Number(brandId);
+    if (typeof brandId !== 'number' || !Number.isFinite(brandId)) {
+      return NextResponse.json({ ok: false, error: 'brandId ไม่ถูกต้อง' }, { status: 400 });
     }
 
-    // 3. สร้างข้อมูลรุ่นของแบรนด์ใหม่
-    const newBrandModel = await prisma.brandModel.create({
-      data: {
-        name,
-        brandId: Number(brandId),
-      },
-    });
+    // ห้ามซ้ำ (unique: name + brandId)
+    const dup = await prisma.brandModel.findFirst({ where: { name, brandId } });
+    if (dup) {
+      return NextResponse.json({ ok: false, error: 'มีรุ่นนี้ในแบรนด์นี้อยู่แล้ว' }, { status: 409 });
+    }
 
-    return NextResponse.json(newBrandModel, { status: 201 });
-  } catch (error) {
-    console.error('POST /api/admin/brand-model error:', error);
-    const message = error instanceof Error ? error.message : 'เกิดข้อผิดพลาดไม่ทราบสาเหตุ';
-    return NextResponse.json({ error: message }, { status: 500 });
+    const created = await prisma.brandModel.create({ data: { name, brandId } });
+    return NextResponse.json({ ok: true, data: created });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    // eslint-disable-next-line no-console
+    console.error('POST /api/admin/brand-model', message);
+    return NextResponse.json({ ok: false, error: 'Internal Server Error' }, { status: 500 });
   }
 };
+
