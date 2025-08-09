@@ -12,13 +12,16 @@ export const dynamic = 'force-dynamic';
 
 export const GET = async () => {
   try {
+    // quick DB ping (helps surface connection errors in logs)
+    await prisma.$queryRaw`select 1 as up`;
+
     const brands = await prisma.brand.findMany({ orderBy: { name: 'asc' } });
     return NextResponse.json({ ok: true, data: brands });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     // eslint-disable-next-line no-console
     console.error('GET /api/admin/brand', message);
-    return NextResponse.json({ ok: false, error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 };
 
@@ -42,6 +45,6 @@ export const POST = async (req: Request) => {
     const message = error instanceof Error ? error.message : String(error);
     // eslint-disable-next-line no-console
     console.error('POST /api/admin/brand', message);
-    return NextResponse.json({ ok: false, error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 };
