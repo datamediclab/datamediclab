@@ -1,30 +1,31 @@
 // app/api/admin/logout/route.ts
-
 import { NextResponse } from 'next/server';
 import { serialize } from 'cookie';
 
-export async function POST() {
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+export async function POST(req: Request) {
   try {
-    // 1. สร้าง cookie ชื่อ 'admin-token' ให้มีค่าว่าง และตั้งค่าให้หมดอายุทันที (maxAge: -1)
-    // การกระทำนี้เป็นการสั่งให้เบราว์เซอร์ของผู้ใช้ลบ cookie ดังกล่าวทิ้ง
+    // สร้างคุกกี้ชื่อเดียวกับตอน login และลบทิ้งด้วย maxAge: 0 (หรือ -1 ก็ได้)
     const cookie = serialize('admin-token', '', {
-      httpOnly: true, // ป้องกันการเข้าถึง cookie ผ่าน JavaScript ฝั่ง Client
-      path: '/',      // กำหนดให้ cookie นี้มีผลทั้งเว็บไซต์
-      maxAge: -1,     // ตั้งค่าให้ cookie หมดอายุทันที
+      httpOnly: true,
+      path: '/',
+      maxAge: 0,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
     });
 
-    // 2. สร้าง Response เพื่อ redirect ผู้ใช้กลับไปยังหน้า login
-    // ใช้ค่าจาก environment variable หรือ fallback เป็น localhost
-    const redirectURL = new URL('/admin/login', process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000');
-    const res = NextResponse.redirect(redirectURL);
-
-    // 3. ตั้งค่า header 'Set-Cookie' ใน Response ที่จะส่งกลับไป
-    // เพื่อส่งคำสั่งลบ cookie ไปยังเบราว์เซอร์
+    // redirect กลับหน้า /admin/login โดยอิงจาก URL ปัจจุบัน (รองรับทุก env)
+    const redirectURL = new URL('/admin/login', new URL(req.url).origin);
+    const res = NextResponse.redirect(redirectURL, { status: 302 });
     res.headers.set('Set-Cookie', cookie);
-
     return res;
   } catch (error) {
     console.error('Logout Error:', error);
-    return NextResponse.json({ error: 'เกิดข้อผิดพลาดในการออกจากระบบ' }, { status: 500 });
+    return NextResponse.json({ ok: false, error: 'เกิดข้อผิดพลาดในการออกจากระบบ' }, { status: 500 });
   }
 }
+
+// (ทางเลือก) รองรับ GET สำหรับการเรียกจากลิงก์ปุ่มออกจากระบบ
+export const GET = POST;

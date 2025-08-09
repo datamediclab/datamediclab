@@ -1,163 +1,171 @@
+// Prisma schema — cleaned relation field names to avoid duplicate field errors
+// Run: npx prisma migrate dev --name init_core
+// After generating migration.sql, prepend: CREATE EXTENSION IF NOT EXISTS citext;
+
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
   provider  = "postgresql"
-  url       = env("DATABASE_URL") // pooled 6543 (serverless runtime)
-  directUrl = env("DIRECT_URL") // direct 5432 (migrations)
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model Customer {
-  fullName  String
-  phone     String
-  email     String?
+  id        Int            @id @default(autoincrement())
+  fullName  String         @db.VarChar(150)
+  phone     String         @unique @db.VarChar(30)
+  email     String?        @unique @db.Citext
   lineId    String?
   createdAt DateTime       @default(now())
-  id        Int            @id @default(autoincrement())
+  updatedAt DateTime       @updatedAt
   notes     CustomerNote[]
   devices   Device[]
+
+  @@index([phone])
+  @@index([createdAt])
+  @@index([updatedAt])
 }
 
 model Device {
+  id               Int        @id @default(autoincrement())
   deviceType       DeviceType
   capacity         String
-  serialNumber     String?
+  serialNumber     String?    @unique @db.VarChar(120)
   description      String?
-  currentStatus    StatusEnum
+  currentStatus    StatusEnum @default(WAITING_FOR_CUSTOMER_DEVICE)
   statusHistoryRaw Json?
   technicianNote   String?
-  receivedAt       DateTime           @default(now())
-  createdAt        DateTime           @default(now())
-  id               Int                @id @default(autoincrement())
+  receivedAt       DateTime   @default(now())
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
   customerId       Int
   brandId          Int
   modelId          Int?
-  technicianId     Int?
-  changedById      Int?
-  activityLogs     AdminActivityLog[]
-  brand            Brand              @relation(fields: [brandId], references: [id])
-  changedBy        Admin?             @relation("StatusChangedBy", fields: [changedById], references: [id])
-  customer         Customer           @relation(fields: [customerId], references: [id])
-  model            BrandModel?        @relation(fields: [modelId], references: [id])
-  technician       Admin?             @relation("Technician", fields: [technicianId], references: [id])
-  paymentRecords   PaymentRecord[]
-  RecoveryJob      RecoveryJob[]
-  repairRecords    RepairRecord[]
-  statusHistories  StatusHistory[]
-  trackLogs        TrackLog[]
-}
 
-model TrackLog {
-  action    String
-  note      String?
-  createdAt DateTime @default(now())
-  id        Int      @id @default(autoincrement())
-  deviceId  Int
-  actorId   Int?
-  actor     Admin?   @relation("TrackLogActor", fields: [actorId], references: [id])
-  device    Device   @relation(fields: [deviceId], references: [id])
-}
+  brand    Brand       @relation(fields: [brandId], references: [id], onDelete: Restrict)
+  customer Customer    @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  model    BrandModel? @relation(fields: [modelId], references: [id], onDelete: Restrict)
 
-model RepairRecord {
-  repairDate   DateTime @default(now())
-  description  String?
-  cost         Float
-  note         String?
-  createdAt    DateTime @default(now())
-  id           Int      @id @default(autoincrement())
-  deviceId     Int
-  technicianId Int?
-  device       Device   @relation(fields: [deviceId], references: [id])
-  technician   Admin?   @relation("RepairRecordTechnician", fields: [technicianId], references: [id])
-}
+  paymentRecords  PaymentRecord[]
+  statusHistories StatusHistory[]
+  trackLogs       TrackLog[]
+  repairRecords   RepairRecord[]
+  recoveryJobs    RecoveryJob[]
 
-model StatusHistory {
-  from        StatusEnum
-  to          StatusEnum
-  note        String?
-  changedAt   DateTime   @default(now())
-  id          Int        @id @default(autoincrement())
-  deviceId    Int
-  changedById Int?
-  changedBy   Admin?     @relation("StatusHistoryChangedBy", fields: [changedById], references: [id])
-  device      Device     @relation(fields: [deviceId], references: [id])
+  @@index([customerId, receivedAt])
+  @@index([currentStatus])
+  @@index([brandId])
+  @@index([modelId])
+  @@index([updatedAt])
 }
 
 model PaymentRecord {
-  amount   Float
+  id       Int           @id @default(autoincrement())
+  amount   Decimal       @db.Decimal(12, 2)
   method   PaymentMethod
   paidAt   DateTime      @default(now())
   note     String?
-  id       Int           @id @default(autoincrement())
   deviceId Int
-  device   Device        @relation(fields: [deviceId], references: [id])
+  device   Device        @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@index([deviceId, paidAt])
 }
 
 model Admin {
-  name            String
-  email           String             @unique
-  password        String
-  role            UserRole
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
-  id              Int                @id @default(autoincrement())
-  activityLogs    AdminActivityLog[]
-  changedStatusOf Device[]           @relation("StatusChangedBy")
-  technicianOf    Device[]           @relation("Technician")
-  RecoveryJob     RecoveryJob[]
-  repairJobs      RepairRecord[]     @relation("RepairRecordTechnician")
-  statusChanges   StatusHistory[]    @relation("StatusHistoryChangedBy")
-  trackLogs       TrackLog[]         @relation("TrackLogActor")
+  id            Int             @id @default(autoincrement())
+  name          String
+  email         String          @unique @db.Citext
+  password      String
+  role          UserRole
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  statusChanged StatusHistory[] @relation("StatusChangedBy")
+  technicianFor RepairRecord[]  @relation("RepairRecordTechnician")
+  actorLogs     TrackLog[]      @relation("TrackLogActor")
+  assignedJobs  RecoveryJob[]   @relation("AssignedRecoveryJobs")
+
+  @@index([updatedAt])
 }
 
 model Brand {
-  name      String       @unique
-  createdAt DateTime     @default(now())
   id        Int          @id @default(autoincrement())
+  name      String       @unique @db.VarChar(120)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
   models    BrandModel[]
   devices   Device[]
+
+  @@index([updatedAt])
 }
 
 model BrandModel {
-  name      String
-  createdAt DateTime @default(now())
   id        Int      @id @default(autoincrement())
+  name      String   @db.VarChar(120)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
   brandId   Int
-  brand     Brand    @relation(fields: [brandId], references: [id])
+  brand     Brand    @relation(fields: [brandId], references: [id], onDelete: Restrict)
   devices   Device[]
 
   @@unique([name, brandId])
-}
-
-model AdminActivityLog {
-  action    String
-  detail    String?
-  createdAt DateTime @default(now())
-  id        Int      @id @default(autoincrement())
-  adminId   Int
-  deviceId  Int
-  admin     Admin    @relation(fields: [adminId], references: [id])
-  device    Device   @relation(fields: [deviceId], references: [id])
+  @@index([updatedAt])
 }
 
 model CustomerNote {
+  id         Int      @id @default(autoincrement())
   note       String
   createdAt  DateTime @default(now())
-  id         Int      @id @default(autoincrement())
   customerId Int
-  customer   Customer @relation(fields: [customerId], references: [id])
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
 }
 
 model RecoveryJob {
-  id           Int        @id @default(autoincrement())
-  deviceId     Int
-  technicianId Int?
-  status       StatusEnum
+  id              Int        @id @default(autoincrement())
+  deviceId        Int
+  assignedAdminId Int?
+  status          StatusEnum
+  note            String?
+  createdAt       DateTime   @default(now())
+  device          Device     @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  assignedAdmin   Admin?     @relation("AssignedRecoveryJobs", fields: [assignedAdminId], references: [id])
+}
+
+model RepairRecord {
+  id                Int      @id @default(autoincrement())
+  repairDate        DateTime @default(now())
+  description       String?
+  cost              Decimal  @db.Decimal(12, 2)
+  note              String?
+  createdAt         DateTime @default(now())
+  deviceId          Int
+  technicianAdminId Int?
+  device            Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  technician        Admin?   @relation("RepairRecordTechnician", fields: [technicianAdminId], references: [id])
+}
+
+model StatusHistory {
+  id               Int        @id @default(autoincrement())
+  from             StatusEnum
+  to               StatusEnum
+  note             String?
+  changedAt        DateTime   @default(now())
+  deviceId         Int
+  changedByAdminId Int?
+  changedBy        Admin?     @relation("StatusChangedBy", fields: [changedByAdminId], references: [id])
+  device           Device     @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+}
+
+model TrackLog {
+  id           Int      @id @default(autoincrement())
+  action       String
   note         String?
-  createdAt    DateTime   @default(now())
-  device       Device     @relation(fields: [deviceId], references: [id])
-  technician   Admin?     @relation(fields: [technicianId], references: [id])
+  createdAt    DateTime @default(now())
+  deviceId     Int
+  actorAdminId Int?
+  actor        Admin?   @relation("TrackLogActor", fields: [actorAdminId], references: [id])
+  device       Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)
 }
 
 enum StatusEnum {

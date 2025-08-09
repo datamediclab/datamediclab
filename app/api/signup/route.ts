@@ -2,8 +2,10 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import type { UserRole } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
+export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 interface CreateAdminPayload {
@@ -13,8 +15,16 @@ interface CreateAdminPayload {
   role?: UserRole;
 }
 
+// ใช้ตรวจแบบง่ายเพื่อหลีกเลี่ยง regex escape ปัญหาในตัวแก้ไข
+const isValidEmail = (e: string) => e.includes('@') && e.includes('.');
+
 export async function POST(req: Request) {
   try {
+    // เข้มงวด Content-Type
+    if (!req.headers.get('content-type')?.includes('application/json')) {
+      return NextResponse.json({ ok: false, error: 'Unsupported Content-Type' }, { status: 415 });
+    }
+
     const raw = (await req.json()) as Partial<CreateAdminPayload>;
     const email = (raw.email ?? '').trim().toLowerCase();
     const password = raw.password ?? '';
@@ -23,15 +33,19 @@ export async function POST(req: Request) {
 
     if (!email || !password || !name) {
       return NextResponse.json(
-        { error: 'กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน (name, email, password)' },
+        { ok: false, error: 'กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน (name, email, password)' },
         { status: 400 }
       );
+    }
+
+    if (!isValidEmail(email)) {
+      return NextResponse.json({ ok: false, error: 'อีเมลไม่ถูกต้อง' }, { status: 400 });
     }
 
     const existing = await prisma.admin.findUnique({ where: { email } });
     if (existing) {
       return NextResponse.json(
-        { error: 'อีเมลนี้ถูกใช้งานแล้ว' },
+        { ok: false, error: 'อีเมลนี้ถูกใช้งานแล้ว' },
         { status: 409 }
       );
     }
@@ -39,33 +53,21 @@ export async function POST(req: Request) {
     const passwordHash = await bcrypt.hash(password, 10);
 
     const admin = await prisma.admin.create({
-      data: {
-        email,
-        name,
-        password: passwordHash,
-        role,
-      },
+      data: { email, name, password: passwordHash, role },
+      select: { id: true, email: true, name: true, role: true, createdAt: true },
     });
 
-    // ส่งกลับเฉพาะฟิลด์ที่มีอยู่จริงใน schema
-    const adminSafe = {
-      id: admin.id,
-      email: admin.email,
-      name: admin.name,
-      role: admin.role,
-      createdAt: admin.createdAt,
-    };
-
-    return NextResponse.json({ success: true, admin: adminSafe }, { status: 201 });
-  } catch (err) {
-    if (err && typeof err === 'object' && 'code' in err && (err as { code?: string }).code === 'P2002') {
+    return NextResponse.json({ ok: true, data: admin }, { status: 201 });
+  } catch (err: unknown) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
       return NextResponse.json(
-        { error: 'อีเมลนี้ถูกใช้งานในฐานข้อมูลของเราแล้ว' },
+        { ok: false, error: 'อีเมลนี้ถูกใช้งานในฐานข้อมูลของเราแล้ว' },
         { status: 409 }
       );
     }
 
     const message = err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการสร้างแอดมิน';
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }
+

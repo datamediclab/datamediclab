@@ -1,9 +1,11 @@
-
 // app/api/register-device/route.ts
 
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { DeviceType, StatusEnum } from '@prisma/client';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 // ---- helpers (no-any, safe guards) ----
 function isRecord(v: unknown): v is Record<string, unknown> {
@@ -17,10 +19,27 @@ function toInt(v: unknown): number | null {
 }
 
 function isEnumValue<T extends string>(value: unknown, enumObj: Record<string, T>): value is T {
-  return typeof value === 'string' && (Object.values(enumObj) as string[]).includes(value);
+  return typeof value === 'string' && (Object.values(enumObj) as string[]).includes(value.toUpperCase());
 }
 
+function trimOrEmpty(v: unknown): string {
+  return typeof v === 'string' ? v.trim() : '';
+}
+
+// Optional: parse ISO date, return null if invalid
+function parseIsoDate(v: unknown): Date | null {
+  if (typeof v !== 'string' || v.trim() === '') return null;
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+// ---- POST: Register a device (create customer if needed) ----
 export async function POST(req: Request) {
+  // Strict content-type
+  if (!req.headers.get('content-type')?.includes('application/json')) {
+    return NextResponse.json({ error: 'Unsupported Content-Type' }, { status: 415 });
+  }
+
   let body: unknown;
   try {
     body = await req.json();
@@ -41,16 +60,22 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'deviceData จำเป็นต้องมี' }, { status: 400 });
   }
 
+  // ---- device fields ----
   const brandId = toInt(deviceData.brandId);
   const modelId = toInt(deviceData.modelId);
-  const deviceTypeRaw = deviceData.deviceType;
-  const serialNumber = typeof deviceData.serialNumber === 'string' ? deviceData.serialNumber : undefined;
-  const capacity = typeof deviceData.capacity === 'string' ? deviceData.capacity : '';
-  const description = typeof deviceData.description === 'string' ? deviceData.description : '';
-  const currentStatusRaw = deviceData.currentStatus;
+  const deviceTypeRaw = typeof deviceData.deviceType === 'string' ? deviceData.deviceType.toUpperCase() : deviceData.deviceType;
+  const serialNumber = trimOrEmpty(deviceData.serialNumber) || undefined;
+  const capacity = trimOrEmpty(deviceData.capacity);
+  const description = trimOrEmpty(deviceData.description);
+  const currentStatusRaw = typeof deviceData.currentStatus === 'string' ? deviceData.currentStatus.toUpperCase() : deviceData.currentStatus;
+  const receivedAt = parseIsoDate(deviceData.receivedAt) ?? new Date();
 
   if (brandId == null) {
     return NextResponse.json({ error: 'brandId ไม่ถูกต้อง' }, { status: 400 });
+  }
+
+  if (capacity.length === 0) {
+    return NextResponse.json({ error: 'กรุณาระบุความจุ (capacity)' }, { status: 400 });
   }
 
   if (!isEnumValue(deviceTypeRaw, DeviceType)) {
@@ -66,26 +91,38 @@ export async function POST(req: Request) {
   let customerId: number | null = null;
 
   if (isNewCustomer) {
-    if (!customerData || typeof customerData.fullName !== 'string' || typeof customerData.phone !== 'string') {
+    const fullName = trimOrEmpty(customerData?.fullName);
+    const phone = trimOrEmpty(customerData?.phone);
+    const email = trimOrEmpty(customerData?.email);
+
+    if (!fullName || !phone) {
       return NextResponse.json({ error: 'ข้อมูลลูกค้าใหม่ไม่ครบถ้วน' }, { status: 400 });
     }
+
     try {
       const newCustomer = await prisma.customer.create({
         data: {
-          fullName: customerData.fullName,
-          phone: customerData.phone,
-          email: typeof customerData.email === 'string' ? customerData.email : null,
+          fullName,
+          phone,
+          email: email || null,
         },
+        select: { id: true },
       });
       customerId = newCustomer.id;
     } catch (e) {
+      // หาก unique ซ้ำ (เช่นเบอร์โทร/email) อาจต้องส่ง 409 แต่ที่นี่รวมเป็น 500 ตาม requirement เดิม
       const msg = e instanceof Error ? e.message : 'บันทึกลูกค้าใหม่ไม่สำเร็จ';
       return NextResponse.json({ error: msg }, { status: 500 });
     }
   } else {
-    const selectedId = selectedCustomer ? toInt(selectedCustomer.id) : null;
+    const selectedId = toInt(selectedCustomer?.id);
     if (selectedId == null) {
       return NextResponse.json({ error: 'กรุณาเลือกลูกค้าเก่าให้ถูกต้อง' }, { status: 400 });
+    }
+    // verify existing customer
+    const exists = await prisma.customer.findUnique({ where: { id: selectedId }, select: { id: true } });
+    if (!exists) {
+      return NextResponse.json({ error: 'ไม่พบบัญชีลูกค้าที่เลือก' }, { status: 404 });
     }
     customerId = selectedId;
   }
@@ -101,7 +138,7 @@ export async function POST(req: Request) {
         capacity,
         description,
         currentStatus,
-        receivedAt: new Date(),
+        receivedAt,
       },
       select: { id: true },
     });
