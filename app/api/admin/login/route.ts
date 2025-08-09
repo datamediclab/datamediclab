@@ -10,16 +10,15 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
-    // เข้มงวด Content-Type
-    if (!req.headers.get('content-type')?.includes('application/json')) {
+    const ct = req.headers.get('content-type') || '';
+    if (!ct.includes('application/json')) {
       return NextResponse.json({ ok: false, error: 'Unsupported Content-Type' }, { status: 415 });
     }
 
-    const { email, password } = (await req.json()) as { email?: string; password?: string };
-
-    const emailStr = typeof email === 'string' ? email.trim() : '';
-    const passwordStr = typeof password === 'string' ? password : '';
-    if (emailStr.length === 0 || passwordStr.length === 0) {
+    const body = (await req.json()) as { email?: string; password?: string };
+    const emailStr = typeof body.email === 'string' ? body.email.trim() : '';
+    const passwordStr = typeof body.password === 'string' ? body.password : '';
+    if (!emailStr || !passwordStr) {
       return NextResponse.json({ ok: false, error: 'กรุณากรอกอีเมลและรหัสผ่าน' }, { status: 400 });
     }
 
@@ -28,7 +27,6 @@ export async function POST(req: Request) {
       select: { id: true, email: true, password: true, role: true },
     });
 
-    // เพื่อลดการเดาอีเมล ตอบข้อความรวมกรณีไม่พบหรือรหัสผ่านไม่ถูกต้อง
     if (!admin) {
       return NextResponse.json({ ok: false, error: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' }, { status: 401 });
     }
@@ -40,15 +38,11 @@ export async function POST(req: Request) {
 
     const secret = process.env.JWT_SECRET;
     if (!secret) {
-      console.error('JWT_SECRET is not set');
-      return NextResponse.json({ ok: false, error: 'การตั้งค่าเซิร์ฟเวอร์ไม่ถูกต้อง' }, { status: 500 });
+      console.error('[Login] Missing JWT_SECRET in env');
+      return NextResponse.json({ ok: false, error: 'การตั้งค่าเซิร์ฟเวอร์ไม่ถูกต้อง (JWT)' }, { status: 500 });
     }
 
-    const token = sign(
-      { id: admin.id, email: admin.email, role: admin.role },
-      secret,
-      { expiresIn: '7d' }
-    );
+    const token = sign({ id: admin.id, email: admin.email, role: admin.role }, secret, { expiresIn: '7d' });
 
     const cookie = serialize('admin-token', token, {
       httpOnly: true,
@@ -59,15 +53,32 @@ export async function POST(req: Request) {
     });
 
     return new NextResponse(
-      JSON.stringify({
-        ok: true,
-        user: { id: admin.id, email: admin.email, role: admin.role },
-      }),
+      JSON.stringify({ ok: true, user: { id: admin.id, email: admin.email, role: admin.role } }),
       { status: 200, headers: { 'Set-Cookie': cookie, 'Content-Type': 'application/json' } }
     );
   } catch (err: unknown) {
-    console.error('Login API Error:', err);
-    const message = err instanceof Error ? err.message : 'เกิดข้อผิดพลาดภายในระบบ';
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    const { Prisma } = await import('@prisma/client');
+
+    if (err instanceof Prisma.PrismaClientInitializationError) {
+      console.error('[Login] Prisma initialization error:', err.message);
+      return NextResponse.json({ ok: false, error: 'ฐานข้อมูลไม่พร้อมใช้งาน (init)' }, { status: 503 });
+    }
+
+    if (err instanceof Prisma.PrismaClientKnownRequestError) {
+      if (err.code === 'P1001') {
+        console.error('[Login] Prisma known error P1001:', err.message);
+        return NextResponse.json({ ok: false, error: 'เชื่อมต่อฐานข้อมูลไม่ได้ (P1001)' }, { status: 503 });
+      }
+      console.error('[Login] Prisma known error:', err.code, err.message);
+      return NextResponse.json({ ok: false, error: `ข้อผิดพลาดฐานข้อมูล (${err.code})` }, { status: 500 });
+    }
+
+    if (err instanceof Error) {
+      console.error('[Login] Unexpected error:', err.message);
+      return NextResponse.json({ ok: false, error: err.message }, { status: 500 });
+    }
+
+    console.error('[Login] Unknown error');
+    return NextResponse.json({ ok: false, error: 'เกิดข้อผิดพลาดภายในระบบ' }, { status: 500 });
   }
 }
