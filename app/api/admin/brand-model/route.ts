@@ -1,6 +1,6 @@
 // app/api/admin/brand-model/route.ts
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma'; // ✨ แก้ไข: นำเข้า Prisma จากไฟล์กลางให้ถูกต้อง
+import { prisma } from '@/lib/prisma'; // ✨ แก้ไข: นำเข้า Prisma จากไฟล์กลางให้ถูกต้อง
 
 export const dynamic = 'force-dynamic';
 

@@ -1,6 +1,6 @@
 // app/api/admin/brand-model/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 
 // ให้ตรงกับรูปแบบในไฟล์ brand: ใช้ params เป็น Promise

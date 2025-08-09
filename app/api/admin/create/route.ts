@@ -2,7 +2,7 @@
 
 // app/api/admin/create/route.ts
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma'; // ✅ ใช้ Prisma จากไฟล์กลาง ตามที่กำหนด
+import { prisma } from '@/lib/prisma'; // ✅ ใช้ Prisma จากไฟล์กลาง ตามที่กำหนด
 import bcrypt from 'bcryptjs';
 import type { UserRole } from '@prisma/client';
 

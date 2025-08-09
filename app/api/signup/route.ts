@@ -1,6 +1,6 @@
 // app/api/admin/create/route.ts
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
 import type { UserRole } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 

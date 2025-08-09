@@ -1,6 +1,6 @@
 // app/api/admin/brand/route.ts 
 
-import prisma from '@/lib/prisma'; // ✨ แก้ไข: นำเข้า Prisma จากไฟล์กลาง
+import { prisma } from '@/lib/prisma'; // ✨ แก้ไข: นำเข้า Prisma จากไฟล์กลาง
 import { NextResponse } from 'next/server';
 
 // ✨ ไม่ต้องใช้ const prisma = new PrismaClient(); อีกต่อไป

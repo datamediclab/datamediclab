@@ -1,6 +1,6 @@
 // app/api/register-device/history/route.ts
 import { NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
+import { prisma } from "@/lib/prisma";
 
 // Shape that the UI table expects
 export type HistoryItem = {

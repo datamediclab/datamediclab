@@ -1,6 +1,6 @@
 // app/api/track-status/route.js
 import { NextResponse } from "next/server";
-import prisma from "@/lib/prisma"; // ✨ แก้ไข: เปลี่ยนมาใช้ Prisma
+import { prisma } from "@/lib/prisma"; // ✨ แก้ไข: เปลี่ยนมาใช้ Prisma
 
 export async function GET(req) {
   try {
