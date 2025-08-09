@@ -7,14 +7,9 @@ import { NextResponse } from 'next/server';
 export const runtime = 'nodejs';
 // กัน cache ระหว่างดีบั๊ก และให้รันเสมอจากฟังก์ชัน
 export const dynamic = 'force-dynamic';
-// รันใกล้ Supabase (สิงคโปร์) ลด latency และความเสี่ยงเน็ตเวิร์ก
-export const preferredRegion = ['sin1'];
-
-// ✨ ไม่ต้องใช้ const prisma = new PrismaClient(); อีกต่อไป
 
 export const GET = async () => {
   try {
-    // quick DB ping (helps surface connection errors in logs)
     await prisma.$queryRaw`select 1 as up`;
 
     const meta = {
@@ -26,7 +21,6 @@ export const GET = async () => {
     return NextResponse.json({ ok: true, data: brands, meta });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
-    // eslint-disable-next-line no-console
     console.error('GET /api/admin/brand', message);
     const meta = {
       runtime: process.env.NEXT_RUNTIME ?? 'unknown',
@@ -54,7 +48,6 @@ export const POST = async (req: Request) => {
     return NextResponse.json({ ok: true, data: newBrand });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
-    // eslint-disable-next-line no-console
     console.error('POST /api/admin/brand', message);
     const meta = {
       runtime: process.env.NEXT_RUNTIME ?? 'unknown',
