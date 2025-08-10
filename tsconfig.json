@@ -19,14 +19,15 @@
     ],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./*"],
+      "@/*": ["*"],
       "@/lib/*": ["lib/*"],
       "@/types/*": ["types/*"],
       "@/app/*": ["app/*"],
       "@/components/*": ["components/*"],
       "@/stores/*": ["stores/*"],
       "@/utils/*": ["utils/*"],
-      "@/features/*": ["features/*"]
+      "@/features/*": ["features/*"],      
+      
     }
   },
   "include": [
@@ -39,4 +40,6 @@
     "node_modules"
   ]
 }
+
+
 

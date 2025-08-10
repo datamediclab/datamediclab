@@ -7,7 +7,7 @@ import type { BrandRef, BrandModelFormValues } from '@/features/brand-model/type
 type BrandModelFormProps = {
   mode: 'create' | 'edit'
   defaultValues?: BrandModelFormValues
-  onSubmit: (data: BrandModelFormValues) => void
+  onSubmit: (data: BrandModelFormValues) => Promise<void> | void
   brandList: BrandRef[]
 }
 
@@ -16,9 +16,8 @@ const BrandModelForm = ({ mode, defaultValues, onSubmit, brandList }: BrandModel
     register,
     handleSubmit,
     reset,
-    formState: { errors, isSubmitting }, // ✅ เพิ่ม isSubmitting
+    formState: { errors, isSubmitting },
   } = useForm<BrandModelFormValues>({
-    // ใช้ type กลางจากไฟล์ types: { name: string; brandId: number | '' }
     defaultValues: defaultValues ?? { name: '', brandId: '' },
   })
 
@@ -26,8 +25,15 @@ const BrandModelForm = ({ mode, defaultValues, onSubmit, brandList }: BrandModel
     if (defaultValues) reset(defaultValues)
   }, [defaultValues, reset])
 
+  const onSubmitInternal = async (data: BrandModelFormValues) => {
+    await Promise.resolve(onSubmit(data))
+    if (mode === 'create') {
+      reset({ name: '', brandId: '' })
+    }
+  }
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form onSubmit={handleSubmit(onSubmitInternal)} className="space-y-4">
       <div>
         <label className="block text-sm font-medium text-white">ชื่อรุ่นสินค้า</label>
         <input
@@ -35,7 +41,6 @@ const BrandModelForm = ({ mode, defaultValues, onSubmit, brandList }: BrandModel
           {...register('name', {
             required: 'กรุณากรอกชื่อรุ่นสินค้า',
             maxLength: { value: 120, message: 'ชื่อยาวเกิน 120 ตัวอักษร' },
-            // ✅ normalize ช่องว่างซ้ำ
             setValueAs: (v) => (typeof v === 'string' ? v.trim().replace(/\s+/g, ' ') : ''),
           })}
           className="mt-1 block w-full rounded border border-gray-300 bg-gray-800 text-white px-3 py-2 text-sm"
@@ -49,7 +54,6 @@ const BrandModelForm = ({ mode, defaultValues, onSubmit, brandList }: BrandModel
         <select
           {...register('brandId', {
             required: 'กรุณาเลือกยี่ห้อสินค้า',
-            // ✅ แปลงค่าจาก select (string) → number | ''
             setValueAs: (v) => (v === '' ? '' : Number(v)),
             validate: (v) =>
               (v !== '' && Number.isFinite(v as number)) || 'กรุณาเลือกยี่ห้อสินค้า',

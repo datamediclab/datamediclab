@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { useBrandStore } from '@/features/brand/store/useBrandStore';
-import useCustomerStore from '@/features/customer/store/useCustomerStore ';
+import useCustomerStore from '@/features/customer/store/useCustomerStore';
 
 
 type DeviceFormData = {
