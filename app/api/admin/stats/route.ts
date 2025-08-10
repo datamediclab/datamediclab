@@ -1,11 +1,12 @@
 // app/api/admin/stats/route.ts 
 import { prisma } from '@/lib/prisma';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { Prisma } from '@prisma/client';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// Helper meta (ดีบั๊ก host/port ปัจจุบันของ DB และ runtime)
+// Helper meta (ใช้ดู runtime และปลายทาง DB อย่างย่อ)
 const getMeta = () => ({
   runtime: process.env.NEXT_RUNTIME ?? 'unknown',
   db: (() => {
@@ -18,7 +19,7 @@ const getMeta = () => ({
   })(),
 } as const);
 
-// สถานะของงานกู้ข้อมูลที่ระบบรองรับ (string union type)
+// สถานะงานกู้ข้อมูลที่ระบบรองรับ (string union)
 const statusKeys = [
   'WAITING_FOR_CUSTOMER_DEVICE',
   'UNDER_DIAGNOSIS',
@@ -31,9 +32,31 @@ const statusKeys = [
 
 export type StatusKey = typeof statusKeys[number];
 
-export const GET = async () => {
+type StatsOk = {
+  ok: true;
+  data: {
+    admin: number;
+    brand: number;
+    customer: number;
+    device: number;
+    recoveryJob: number;
+    statuses: Record<StatusKey, number>;
+  };
+  meta: ReturnType<typeof getMeta>;
+};
+
+type StatsErr = {
+  ok: false;
+  error: string;
+  meta: ReturnType<typeof getMeta>;
+};
+
+export async function GET(_req: NextRequest) {
   try {
-    // รวมสถิติรวม (กัน error ของตารางที่อาจยังไม่สร้างด้วย try/catch รายตัว)
+    // Health check: ยืนยันว่า connection ใช้งานได้จริงบน Vercel
+    await prisma.$queryRaw`select 1 as up`;
+
+    // นับสถิติรวมหลัก ๆ (กัน error รายตัวด้วย .catch(() => 0))
     const [adminCount, brandCount, customerCount, deviceCount] = await Promise.all([
       prisma.admin.count().catch(() => 0),
       prisma.brand.count().catch(() => 0),
@@ -41,12 +64,12 @@ export const GET = async () => {
       prisma.device.count().catch(() => 0),
     ]);
 
-    // เตรียมตัวนับสถานะแบบ map
+    // เตรียมตัวนับสถานะ
     const counts: Record<StatusKey, number> = Object.fromEntries(
       statusKeys.map((k) => [k, 0])
     ) as Record<StatusKey, number>;
 
-    // 1) พยายามนับจาก RecoveryJob.status ก่อน
+    // 1) พยายามดึงจาก recoveryJob.status ก่อน
     try {
       const groupedJob = await prisma.recoveryJob.groupBy({
         by: ['status'],
@@ -58,10 +81,10 @@ export const GET = async () => {
         }
       }
     } catch {
-      // ตารางอาจยังไม่พร้อม: ข้ามไปใช้ fallback ด้านล่าง
+      // ตารางอาจยังไม่พร้อม: ข้าม
     }
 
-    // 2) ถ้ารวมแล้วยังเป็นศูนย์ → fallback ไปนับจาก Device.currentStatus
+    // 2) ถ้าจำนวนทั้งหมดจาก jobs ยังเป็น 0 → ลอง fallback จาก device.currentStatus
     const sumFromJobs = Object.values(counts).reduce((a, b) => a + b, 0);
     if (sumFromJobs === 0) {
       try {
@@ -75,13 +98,13 @@ export const GET = async () => {
           }
         }
       } catch {
-        // ตาราง/คอลัมน์อาจยังไม่พร้อม: ปล่อยให้นับเป็น 0
+        // ตาราง/คอลัมน์อาจยังไม่พร้อม: ปล่อย 0
       }
     }
 
     const totalRecoveryJobs = Object.values(counts).reduce((a, b) => a + b, 0);
 
-    return NextResponse.json({
+    return NextResponse.json<StatsOk>({
       ok: true,
       data: {
         admin: adminCount,
@@ -93,9 +116,17 @@ export const GET = async () => {
       },
       meta: getMeta(),
     });
-  } catch (error) {
+  } catch (error: unknown) {
+    // จัดการ Prisma errors แยกเป็นรายเคส
+    if (error instanceof Prisma.PrismaClientInitializationError) {
+      return NextResponse.json<StatsErr>({ ok: false, error: 'ฐานข้อมูลไม่พร้อมใช้งาน', meta: getMeta() }, { status: 503 });
+    }
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      return NextResponse.json<StatsErr>({ ok: false, error: `ข้อผิดพลาดฐานข้อมูล (${error.code})`, meta: getMeta() }, { status: 500 });
+    }
+
     console.error('GET /api/admin/stats', error);
     const message = error instanceof Error ? error.message : 'Internal Server Error';
-    return NextResponse.json({ ok: false, error: message, meta: getMeta() }, { status: 500 });
+    return NextResponse.json<StatsErr>({ ok: false, error: message, meta: getMeta() }, { status: 500 });
   }
-};
+}
