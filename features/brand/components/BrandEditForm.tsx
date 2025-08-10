@@ -1,4 +1,3 @@
-
 // BrandEditForm.tsx
 
 "use client";
@@ -22,7 +21,9 @@ const BrandEditForm = ({ brandId }: BrandEditFormProps) => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const brand = await getBrandByIdAction(brandId);
+        const idNum = Number(brandId);
+        if (isNaN(idNum)) throw new Error("ID ต้องเป็นตัวเลข");
+        const brand = await getBrandByIdAction(idNum);
         if (brand) {
           setName(brand.name);
         } else {
@@ -44,8 +45,10 @@ const BrandEditForm = ({ brandId }: BrandEditFormProps) => {
     setError("");
 
     try {
-      await updateBrandAction(brandId, { name });
-      router.push("/admin/brand"); // ✅ redirect กลับหน้า list
+      const idNum = Number(brandId);
+      if (isNaN(idNum)) throw new Error("ID ต้องเป็นตัวเลข");
+      await updateBrandAction(idNum, { name });
+      router.push("/admin/brand");
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "เกิดข้อผิดพลาด";
       setError(errorMessage);
