@@ -9,20 +9,20 @@ import Link from 'next/link';
 
 const BrandListTable = () => {
   const { brandList, fetchBrandListAction, deleteBrand } = useBrandStore();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
 
   useEffect(() => {
     fetchBrandListAction();
   }, [fetchBrandListAction]);
 
-  const handleDeleteClick = (id: string) => {
+  const handleDeleteClick = (id: number) => {
     setSelectedId(id);
     setShowConfirm(true);
   };
 
   const handleConfirmDelete = async () => {
-    if (selectedId) {
+    if (selectedId !== null) {
       await deleteBrand(selectedId);
     }
     setSelectedId(null);
@@ -47,13 +47,12 @@ const BrandListTable = () => {
               <tr key={brand.id}>
                 <td className="border px-3 py-2">{brand.name}</td>
                 <td className="border px-3 py-2 text-center space-x-2">
-
-                  <Link href={`/admin/brand/edit/${brand.id}`}
-                    className="text-blue-400 hover:underline">
+                  <Link
+                    href={`/admin/brand/edit/${brand.id}`}
+                    className="text-blue-400 hover:underline"
+                  >
                     แก้ไข
                   </Link>
-
-
                   <button
                     onClick={() => handleDeleteClick(brand.id)}
                     className="text-red-500 hover:underline"
@@ -79,6 +78,3 @@ const BrandListTable = () => {
 };
 
 export default BrandListTable;
-
-
-
