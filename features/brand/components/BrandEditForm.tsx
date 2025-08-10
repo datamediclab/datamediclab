@@ -5,6 +5,7 @@
 import { useEffect, useState } from "react";
 import { useBrandStore } from "@/features/brand/store/useBrandStore";
 import { useRouter } from "next/navigation";
+import type { Brand } from "@/features/brand/types/types";
 
 interface BrandEditFormProps {
   brandId: string;
@@ -12,7 +13,7 @@ interface BrandEditFormProps {
 
 const BrandEditForm = ({ brandId }: BrandEditFormProps) => {
   const { updateBrandAction, getBrandByIdAction } = useBrandStore();
-  const [name, setName] = useState("");
+  const [name, setName] = useState<Brand["name"]>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);

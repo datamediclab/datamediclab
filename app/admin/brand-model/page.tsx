@@ -7,11 +7,12 @@ import AdminLayout from '@/layouts/AdminLayout'
 import { useBrandModelStore } from '@/features/brand-model/store/useBrandModelStore'
 import BrandModelForm from '@/features/brand-model/components/BrandModelForm'
 import BrandModelListTable from '@/features/brand-model/components/BrandModelListTable'
+import type { BrandRef, BrandModelFormValues } from '@/features/brand-model/types/types'
 
 const BrandModelListPage = () => {
   const { fetchBrandModelListAction, createBrandModelAction } = useBrandModelStore()
 
-  const [brandList, setBrandList] = useState<{ id: string; name: string }[]>([])
+  const [brandList, setBrandList] = useState<BrandRef[]>([])
   const [errorMessage, setErrorMessage] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
 
@@ -32,13 +33,30 @@ const BrandModelListPage = () => {
     fetchData()
   }, [fetchBrandModelListAction])
 
-  const handleCreateBrandModel = async (formData: { name: string; brandId: string }) => {
+  const handleCreateBrandModel = async (formData: BrandModelFormValues) => {
     setErrorMessage('')
     setSuccessMessage('')
     try {
+      // formData.brandId อาจเป็น '' (string ว่าง) มาจาก <select>
+      const brandIdValue =
+        typeof formData.brandId === 'string'
+          ? Number(formData.brandId)
+          : formData.brandId
+
+      if (!brandIdValue || Number.isNaN(brandIdValue)) {
+        setErrorMessage('กรุณาเลือกแบรนด์')
+        return
+      }
+
+      const name = (formData.name || '').trim()
+      if (!name) {
+        setErrorMessage('กรุณากรอกชื่อรุ่นสินค้า')
+        return
+      }
+
       await createBrandModelAction({
-        name: formData.name,
-        brandId: Number(formData.brandId),
+        name,
+        brandId: brandIdValue,
       })
       setSuccessMessage('เพิ่มรุ่นสินค้าเรียบร้อยแล้ว')
       await fetchBrandModelListAction()

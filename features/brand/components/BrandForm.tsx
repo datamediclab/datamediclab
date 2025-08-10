@@ -3,18 +3,18 @@
 'use client';
 
 import { useForm, SubmitHandler } from 'react-hook-form';
+import type { Brand } from '@/features/brand/types/types';
 
 // กำหนด Type สำหรับข้อมูลในฟอร์ม
-type FormInputs = {
+interface FormInputs {
   name: string;
-};
+}
 
 // กำหนด Type สำหรับ Props ของคอมโพเนนต์
 export interface BrandFormProps {
   mode: 'create' | 'edit';
-  // ✨ แก้ไข: เพิ่มบรรทัดนี้เข้าไปเพื่อให้ BrandForm รู้จัก prop 'onSubmit'
-  onSubmit: (name: string) => Promise<void>; 
-  initialData?: { name: string }; // สำหรับใช้ในโหมดแก้ไข
+  onSubmit: (name: string) => Promise<void>;
+  initialData?: Pick<Brand, 'name'>; // ใช้ type จาก Brand
 }
 
 const BrandForm = ({ mode, onSubmit, initialData }: BrandFormProps) => {
@@ -29,18 +29,15 @@ const BrandForm = ({ mode, onSubmit, initialData }: BrandFormProps) => {
     },
   });
 
-  // ฟังก์ชันที่จะทำงานเมื่อกดปุ่ม Submit
   const processSubmit: SubmitHandler<FormInputs> = async (data) => {
-    // เรียกใช้ฟังก์ชัน onSubmit ที่ได้รับมาจาก parent component
     await onSubmit(data.name);
-    // ถ้าเป็นโหมดสร้าง ให้ล้างข้อมูลในฟอร์ม
     if (mode === 'create') {
       reset();
     }
   };
 
   return (
-    <form onSubmit={handleSubmit(processSubmit)} className="space-y-4  rounded-lg shadow-md">
+    <form onSubmit={handleSubmit(processSubmit)} className="space-y-4 rounded-lg shadow-md">
       <div>
         <label htmlFor="name" className="block text-sm font-medium text-gray-700">
           ชื่อแบรนด์
@@ -60,7 +57,7 @@ const BrandForm = ({ mode, onSubmit, initialData }: BrandFormProps) => {
           disabled={isSubmitting}
           className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
         >
-          {isSubmitting ? 'กำลังบันทึก...' : (mode === 'create' ? 'เพิ่มแบรนด์' : 'บันทึกการเปลี่ยนแปลง')}
+          {isSubmitting ? 'กำลังบันทึก...' : mode === 'create' ? 'เพิ่มแบรนด์' : 'บันทึกการเปลี่ยนแปลง'}
         </button>
       </div>
     </form>

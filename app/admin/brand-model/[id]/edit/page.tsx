@@ -7,11 +7,12 @@ import { useRouter, useParams } from 'next/navigation'
 import AdminLayout from '@/layouts/AdminLayout'
 import { useBrandModelStore } from '@/features/brand-model/store/useBrandModelStore'
 import BrandModelForm from '@/features/brand-model/components/BrandModelForm'
+import type { BrandRef, BrandModelFormValues } from '@/features/brand-model/types/types'
 
 const BrandModelEditPage = () => {
   const router = useRouter()
   const params = useParams()
-  const brandModelId = typeof params?.id === 'string' ? params.id : ''
+  const brandModelId = typeof params?.id === 'string' ? Number(params.id) : 0
 
   const {
     selectedBrandModel,
@@ -20,7 +21,7 @@ const BrandModelEditPage = () => {
     setSelectedBrandModel,
   } = useBrandModelStore()
 
-  const [brandList, setBrandList] = useState<{ id: string; name: string }[]>([])
+  const [brandList, setBrandList] = useState<BrandRef[]>([])
   const [errorMessage, setErrorMessage] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
 
@@ -29,11 +30,17 @@ const BrandModelEditPage = () => {
 
     const fetchData = async () => {
       try {
-        await fetchBrandModelByIdAction(Number(brandModelId))
+        // โหลดรายละเอียดรุ่นตาม id
+        await fetchBrandModelByIdAction(brandModelId)
 
-        const brandRes = await fetch('/api/admin/brand')
-        const brandData = await brandRes.json()
-        setBrandList(brandData)
+        // โหลดรายการยี่ห้อทั้งหมด (โครงสร้างมาตรฐาน { ok, data })
+        const brandRes = await fetch('/api/admin/brand', { cache: 'no-store' })
+        const brandJson: { ok?: boolean; data?: BrandRef[]; error?: string } = await brandRes.json()
+        if (!brandRes.ok || brandJson.ok === false || !Array.isArray(brandJson.data)) {
+          throw new Error(brandJson?.error || 'โหลดรายการยี่ห้อไม่สำเร็จ')
+        }
+        // เก็บเฉพาะฟิลด์ที่จำเป็นเพื่อใช้ใน select
+        setBrandList(brandJson.data.map(({ id, name }) => ({ id, name })))
       } catch (error) {
         console.error('❌ โหลดข้อมูลไม่สำเร็จ:', error)
         setErrorMessage('เกิดข้อผิดพลาดในการโหลดข้อมูล')
@@ -41,18 +48,17 @@ const BrandModelEditPage = () => {
     }
 
     fetchData()
-
     return () => setSelectedBrandModel(null)
   }, [brandModelId, fetchBrandModelByIdAction, setSelectedBrandModel])
 
-  const handleUpdate = async (formData: { name: string; brandId: string }) => {
+  const handleUpdate = async (formData: BrandModelFormValues) => {
     setErrorMessage('')
     setSuccessMessage('')
     try {
-      await updateBrandModelAction(Number(brandModelId), {
-        name: formData.name,
-        brandId: Number(formData.brandId),
-      })
+      const body: { name?: string; brandId?: number } = { name: formData.name }
+      if (formData.brandId !== '') body.brandId = Number(formData.brandId)
+
+      await updateBrandModelAction(brandModelId, body)
       setSuccessMessage('แก้ไขข้อมูลสำเร็จ')
       router.push('/admin/brand-model')
     } catch (err) {
@@ -66,22 +72,17 @@ const BrandModelEditPage = () => {
       <div className="p-4">
         <h1 className="text-2xl font-semibold mb-4">แก้ไขรุ่นสินค้า</h1>
 
-        {errorMessage && (
-          <div className="mb-4 text-red-600 font-medium">{errorMessage}</div>
-        )}
-        {successMessage && (
-          <div className="mb-4 text-green-600 font-medium">{successMessage}</div>
-        )}
+        {errorMessage && <div className="mb-4 text-red-600 font-medium">{errorMessage}</div>}
+        {successMessage && <div className="mb-4 text-green-600 font-medium">{successMessage}</div>}
 
         {selectedBrandModel ? (
           <BrandModelForm
             mode="edit"
             defaultValues={{
-              ...selectedBrandModel,
-              brandId: selectedBrandModel.brandId.toString()
+              name: selectedBrandModel.name,
+              brandId: selectedBrandModel.brandId, // number | '' ตาม type ฟอร์ม
             }}
             brandList={brandList}
-            
             onSubmit={handleUpdate}
           />
         ) : (
@@ -93,4 +94,3 @@ const BrandModelEditPage = () => {
 }
 
 export default BrandModelEditPage
-
