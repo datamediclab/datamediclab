@@ -1,9 +1,12 @@
 import { create } from "zustand";
 
+const normalizeName = (s: string) => s.trim().split(" ").filter(Boolean).join(" ");
+
 interface Brand {
-  id: string;
+  id: number;
   name: string;
   createdAt: string;
+  updatedAt?: string;
 }
 
 interface BrandStore {
@@ -13,9 +16,9 @@ interface BrandStore {
 
   fetchBrandListAction: () => Promise<void>;
   createBrandAction: (name: string) => Promise<void>;
-  updateBrandAction: (id: string, data: { name: string }) => Promise<void>;
-  deleteBrand: (id: string) => Promise<void>;
-  getBrandByIdAction: (id: string) => Promise<Brand | null>;
+  updateBrandAction: (id: number, data: { name: string }) => Promise<void>;
+  deleteBrand: (id: number) => Promise<void>;
+  getBrandByIdAction: (id: number | string) => Promise<Brand | null>;
 }
 
 export const useBrandStore = create<BrandStore>((set) => ({
@@ -26,14 +29,13 @@ export const useBrandStore = create<BrandStore>((set) => ({
   fetchBrandListAction: async () => {
     set({ isLoading: true, error: null });
     try {
-      const res = await fetch("/api/admin/brand");
-      const data = await res.json();
-
-      if (!res.ok) throw new Error(data.error || "โหลดแบรนด์ล้มเหลว");
-
-      set({ brandList: Array.isArray(data) ? data : [] });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'เกิดข้อผิดพลาดในการโหลดแบรนด์';
+      const res = await fetch("/api/admin/brand", { cache: "no-store" });
+      const json: { ok?: boolean; data?: Brand[]; error?: string } = await res.json();
+      if (!res.ok || json.ok === false) throw new Error(json.error || "โหลดแบรนด์ล้มเหลว");
+      const list: Brand[] = Array.isArray(json.data) ? (json.data as Brand[]) : [];
+      set({ brandList: list });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "เกิดข้อผิดพลาดในการโหลดแบรนด์";
       console.error("❌ fetchBrandListAction failed:", error);
       set({ error: message, brandList: [] });
     } finally {
@@ -41,75 +43,87 @@ export const useBrandStore = create<BrandStore>((set) => ({
     }
   },
 
-  getBrandByIdAction: async (id: string) => {
+  getBrandByIdAction: async (id) => {
+    const intId = typeof id === "string" ? Number(id) : id;
+    if (!Number.isFinite(intId)) {
+      console.error("❌ getBrandByIdAction error: ID ต้องเป็นตัวเลข");
+      set({ error: "ID ต้องเป็นตัวเลข" });
+      return null;
+    }
     try {
-      const res = await fetch(`/api/admin/brand/${id}`);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "ไม่พบแบรนด์นี้");
-      return data;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'ไม่สามารถดึงข้อมูลแบรนด์';
+      const res = await fetch(`/api/admin/brand/${intId}`, { cache: "no-store" });
+      const json: { ok?: boolean; data?: Brand; error?: string } = await res.json();
+      if (!res.ok || json.ok === false || !json.data) throw new Error(json.error || "ไม่พบแบรนด์นี้");
+      return json.data;
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "ไม่สามารถดึงข้อมูลแบรนด์";
       console.error("❌ getBrandByIdAction error:", error);
       set({ error: message });
       return null;
     }
   },
 
-  createBrandAction: async (name: string) => {
+  createBrandAction: async (name) => {
     try {
+      const normalized = normalizeName(name);
+      if (!normalized) throw new Error("กรุณาระบุชื่อแบรนด์");
+
       const res = await fetch("/api/admin/brand", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({ name: normalized }),
       });
+      const json: { ok?: boolean; data?: Brand; error?: string } = await res.json();
+      if (!res.ok || json.ok === false || !json.data) throw new Error(json.error || "เกิดข้อผิดพลาดในการเพิ่มแบรนด์");
 
-      const result = await res.json();
-      if (!res.ok) throw new Error(result.error || "เกิดข้อผิดพลาดในการเพิ่มแบรนด์");
-
-      set((state) => ({
-        brandList: [...state.brandList, result],
-      }));
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'ไม่สามารถเพิ่มแบรนด์ได้';
+      const created: Brand = json.data as Brand;
+      set((state) => ({ brandList: [...state.brandList, created] }));
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "ไม่สามารถเพิ่มแบรนด์ได้";
       console.error("❌ createBrandAction error:", error);
       set({ error: message });
     }
   },
 
-  updateBrandAction: async (id: string, data: { name: string }) => {
+  updateBrandAction: async (id, data) => {
     try {
+      const normalized = normalizeName(data.name);
+      if (!normalized) throw new Error("กรุณาระบุชื่อแบรนด์");
+
       const res = await fetch(`/api/admin/brand/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ name: normalized }),
       });
+      const json: { ok?: boolean; data?: Brand; error?: string } = await res.json();
+      if (!res.ok || json.ok === false || !json.data) throw new Error(json.error || "อัปเดตแบรนด์ล้มเหลว");
 
-      const result = await res.json();
-      if (!res.ok) throw new Error(result.error || "อัปเดตแบรนด์ล้มเหลว");
-
+      const updated: Brand = json.data as Brand;
       set((state) => ({
-        brandList: state.brandList.map((brand) =>
-          brand.id === id ? { ...brand, ...data } : brand
-        ),
+        brandList: state.brandList.map((b): Brand => (b.id === id ? updated : b)),
       }));
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'ไม่สามารถอัปเดตแบรนด์ได้';
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "ไม่สามารถอัปเดตแบรนด์ได้";
       console.error("❌ updateBrandAction error:", error);
       set({ error: message });
     }
   },
 
-  deleteBrand: async (id: string) => {
+  deleteBrand: async (id) => {
     try {
       const res = await fetch(`/api/admin/brand/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("ลบไม่สำเร็จ");
 
-      set((state) => ({
-        brandList: state.brandList.filter((b) => b.id !== id),
-      }));
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'ไม่สามารถลบแบรนด์ได้';
+      if (res.status === 204) {
+        set((state) => ({ brandList: state.brandList.filter((b): b is Brand => b.id !== id) }));
+        return;
+      }
+
+      const json: { ok?: boolean; data?: { id: number; name?: string }; error?: string } = await res.json();
+      if (!res.ok || json.ok === false) throw new Error(json.error || "ลบไม่สำเร็จ");
+
+      set((state) => ({ brandList: state.brandList.filter((b): b is Brand => b.id !== id) }));
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "ไม่สามารถลบแบรนด์ได้";
       console.error("❌ deleteBrand error:", error);
       set({ error: message });
     }
