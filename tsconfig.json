@@ -1,7 +1,7 @@
 // tsconfig.json
 {
   "compilerOptions": {
-    "target": "ES2017",
+    "target": "ES2022",
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
@@ -9,14 +9,14 @@
     "noEmit": true,
     "esModuleInterop": true,
     "module": "esnext",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
-    "plugins": [
-      { "name": "next" }
-    ],
+    "forceConsistentCasingInFileNames": true,
+    "plugins": [{ "name": "next" }],
+
     "baseUrl": ".",
     "paths": {
       "@/*": ["*"],
@@ -26,8 +26,7 @@
       "@/components/*": ["components/*"],
       "@/stores/*": ["stores/*"],
       "@/utils/*": ["utils/*"],
-      "@/features/*": ["features/*"],      
-      
+      "@/features/*": ["features/*"]
     }
   },
   "include": [
@@ -36,10 +35,5 @@
     "**/*.tsx",
     ".next/types/**/*.ts"
   ],
-  "exclude": [
-    "node_modules"
-  ]
+  "exclude": ["node_modules"]
 }
-
-
-

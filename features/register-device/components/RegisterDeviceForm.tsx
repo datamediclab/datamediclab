@@ -1,9 +1,8 @@
-// NOTE: This Canvas intentionally contains two separate files — RegisterDeviceForm.tsx and useCustomerStore.ts — so that they can be reviewed and edited together while remembering they are distinct files in the actual project structure.
-
 // =============================
-// ✅ RegisterDeviceForm.tsx (Combobox version - shadcn/ui, updated phone input formatting to match CustomerSection)
+// ✅ RegisterDeviceForm.tsx (updated to import from shared module)
 // =============================
 "use client";
+
 
 import { useForm } from "react-hook-form";
 import React, { useEffect, useMemo, useState } from "react";
@@ -16,19 +15,19 @@ import useCustomerStore from "@/features/customer/store/useCustomerStore";
 import { DeviceType, RegisterStatus, type Capacity, type Customer, type CustomerData, type CustomerHistoryItem, type RegisterDeviceFormValues } from "@/features/register-device/types/types";
 import RegisterDeviceListTable from "@/features/register-device/components/RegisterDeviceListTable";
 
+import { localizeStatus } from "@/lib/status";
+
 // ฟังก์ชันกรองตัวเลข
 const onlyDigits = (s: string) => s.replace(/[^0-9]/g, "");
 // ฟังก์ชันฟอร์แมตเบอร์โทรแบบเดียวกับ CustomerSection
 const formatThaiPhone = (digits: string) => {
-  // Mobile-only progressive mask like CustomerSection (0xx-xxx-xxxx)
   let d = onlyDigits(digits);
-  if (d.length > 0 && d[0] !== "0") d = "0" + d; // force leading 0
+  if (d.length > 0 && d[0] !== "0") d = "0" + d;
   d = d.slice(0, 10);
   if (d.length <= 3) return d;
   if (d.length <= 6) return `${d.slice(0, 3)}-${d.slice(3)}`;
   return `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}`;
 };
-
 
 
 const deviceTypeOptions = [
@@ -441,14 +440,21 @@ const RegisterDeviceForm = () => {
                         setVerifyOpen(false);
                         setOpen(false);
                         setSearchKeyword("");
+
                         try {
                           const h = await fetchCustomerHistoryAction(tgt.id);
-                          setCustomerHistory(Array.isArray(h) ? h : []);
+                        const mapped = (Array.isArray(h) ? h : []).map((it: unknown) => {
+                          const anyIt = it as { status?: unknown };
+                          return { ...(it as object), status: localizeStatus(anyIt?.status) } as unknown;
+                        });
+                        setCustomerHistory(mapped as unknown as CustomerHistoryItem[]);
                         } catch (err: unknown) {
                           const msg = err instanceof Error ? err.message : "โหลดประวัติลูกค้าไม่สำเร็จ";
                           console.error("fetch history failed:", msg);
                           setCustomerHistory([]);
                         }
+
+
                         try {
                           (useRegisterDeviceStore.getState() as unknown as { setSelectedCustomerAction?: (c: Customer | null) => void }).setSelectedCustomerAction?.(tgt);
                         } catch { }
@@ -611,5 +617,6 @@ const RegisterDeviceForm = () => {
 };
 
 export default RegisterDeviceForm;
+
 
 

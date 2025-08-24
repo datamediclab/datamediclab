@@ -1,41 +1,53 @@
 // app/admin/page.tsx
 
-'use client';
+'use client'
+import React, { useEffect } from 'react'
+import Link from 'next/link'
+import SidebarAdmin from '@/components/shared/SidebarAdmin'
+import { STATUS_TH_TRACK, STATUS_ORDER } from '@/lib/status'
+import { TRACK_STATUSES, type TrackStatus } from '@/features/track/types/types'
+import { useAdminStatsStore } from '@/features/admin/store/useAdminStatsStore'
 
-import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { Clock, Cpu, FileCheck, Loader2, Smile, XCircle, Undo2, type LucideIcon } from 'lucide-react';
-import SidebarAdmin from '@/components/shared/SidebarAdmin';
-import { useAdminStore } from '@/app/store/useAdminStore';
+// Helper: แปลงคีย์ดิบจาก API หลายแบบให้เป็น TrackStatus มาตรฐาน
+const ALIAS_TO_TRACK: Record<string, TrackStatus> = {
+  WAITING_FOR_CUSTOMER_DEVICE: 'WAITING_CUSTOMER',
+  WAITING_CUSTOMER_DEVICE: 'WAITING_CUSTOMER',
+  WAITING_FOR_CUSTOMER: 'WAITING_CUSTOMER',
+  QUOTED: 'WAITING_CUSTOMER',
+  APPROVED: 'IN_PROGRESS',
+  RECOVERING: 'IN_PROGRESS',
+  RECOVERY_IN_PROGRESS: 'IN_PROGRESS',
+  UNDER_DIAGNOSIS: 'DIAGNOSING',
+  ANALYSIS_COMPLETE: 'DIAGNOSING',
+  RECEIVED_DEVICE: 'RECEIVED',
+  RECEIVE: 'RECEIVED',
+  DEVICE_RETURNED: 'COMPLETED',
+  RECOVERY_SUCCESSFUL: 'COMPLETED',
+  RECOVERY_FAILED: 'CANCELLED',
+}
+const normalizeToTrackStatusLocal = (raw?: string | null): TrackStatus | null => {
+  const s = String(raw ?? '').trim().toUpperCase().replace(/[^A-Z]/g, '_')
+  const candidate = (ALIAS_TO_TRACK[s] ?? s) as string
+  return (TRACK_STATUSES as readonly string[]).includes(candidate)
+    ? (candidate as TrackStatus)
+    : null
+}
+
+// ลำดับการ์ดบนแดชบอร์ด: เรียงตาม STATUS_ORDER แต่ map เป็น TrackStatus และลบซ้ำ
+const ORDERED_TRACKS: TrackStatus[] = Array.from(
+  new Set(
+    (STATUS_ORDER as readonly string[])
+      .map((k) => normalizeToTrackStatusLocal(k))
+      .filter((s): s is TrackStatus => s !== null)
+  )
+)
 
 const AdminDashboardPage = () => {
-  const { admin } = useAdminStore();
-  const [stats, setStats] = useState<Record<string, number>>({});
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const { data, isLoading, error, fetchAdminStatsAction } = useAdminStatsStore()
 
   useEffect(() => {
-    if (!admin) return;
-    const fetchStatsFromApi = async () => {
-      try {
-        const res = await fetch('/api/admin/stats');
-        const data = await res.json();
-        setStats(data);
-      } catch (err) {
-        console.error('Failed to fetch admin stats:', err);
-      }
-    };
-    fetchStatsFromApi();
-  }, [admin]);
-
-  const statusLabels: Record<string, { label: string; Icon: LucideIcon; color: string }> = {
-    WAITING_FOR_CUSTOMER_DEVICE: { label: 'รอลูกค้านำอุปกรณ์มา', Icon: Clock, color: 'text-yellow-500' },
-    UNDER_DIAGNOSIS: { label: 'กำลังวินิจฉัยอุปกรณ์', Icon: Cpu, color: 'text-blue-500' },
-    ANALYSIS_COMPLETE: { label: 'วิเคราะห์ข้อมูลเสร็จสิ้น', Icon: FileCheck, color: 'text-green-500' },
-    RECOVERY_IN_PROGRESS: { label: 'กำลังกู้ข้อมูล', Icon: Loader2, color: 'text-indigo-500' },
-    RECOVERY_SUCCESSFUL: { label: 'กู้ข้อมูลสำเร็จ', Icon: Smile, color: 'text-green-600' },
-    RECOVERY_FAILED: { label: 'กู้ข้อมูลไม่สำเร็จ', Icon: XCircle, color: 'text-red-500' },
-    DEVICE_RETURNED: { label: 'ส่งอุปกรณ์คืนแล้ว', Icon: Undo2, color: 'text-gray-500' },
-  };
+    if (!data && !isLoading) fetchAdminStatsAction()
+  }, [data, isLoading, fetchAdminStatsAction])
 
   return (
     <div className="flex flex-col sm:flex-row bg-zinc-50 dark:bg-zinc-900 min-h-[calc(100vh-4rem)]">
@@ -43,23 +55,17 @@ const AdminDashboardPage = () => {
         <SidebarAdmin />
       </div>
       <main className="flex-1 p-4 sm:p-6 max-w-7xl mx-auto w-full">
-        <button
-          type="button"
-          className="md:hidden mb-3 inline-flex items-center gap-2 rounded-lg border border-zinc-300 dark:border-zinc-600 px-3 py-2 text-sm text-zinc-800 dark:text-zinc-100 bg-white dark:bg-zinc-800"
-          onClick={() => setMobileOpen(true)}
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
-          เมนู
-        </button>
         <div className="bg-white dark:bg-zinc-800 p-4 sm:p-6 rounded-lg shadow-lg">
           <h1 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-white mb-3 sm:mb-4">แดชบอร์ดผู้ดูแลระบบ</h1>
-          <p className="text-sm sm:text-base text-zinc-700 dark:text-zinc-300 mb-4 sm:mb-6">ยินดีต้อนรับเข้าสู่หน้าแดชบอร์ด คุณสามารถจัดการระบบได้จากเมนูด้านซ้าย</p>
+          {error && (
+            <div className="mb-4 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-300">{error}</div>
+          )}
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-6">
             {[
-              { label: 'จำนวนแบรนด์', value: stats.brand ?? 0, color: 'text-blue-600' },
-              { label: 'จำนวนลูกค้า', value: stats.customer ?? 0, color: 'text-green-600' },
-              { label: 'จำนวนอุปกรณ์', value: stats.device ?? 0, color: 'text-purple-600' }
+              { label: 'จำนวนแบรนด์', value: data?.brand ?? 0, color: 'text-blue-600' },
+              { label: 'จำนวนลูกค้า', value: data?.customer ?? 0, color: 'text-green-600' },
+              { label: 'จำนวนอุปกรณ์', value: data?.device ?? 0, color: 'text-purple-600' }
             ].map((item, idx) => (
               <div key={idx} className="bg-zinc-100 dark:bg-zinc-700 p-4 rounded-xl shadow">
                 <h2 className="text-xs sm:text-sm font-semibold text-left dark:text-white">{item.label}</h2>
@@ -70,41 +76,22 @@ const AdminDashboardPage = () => {
 
           <h2 className="text-lg sm:text-xl font-semibold text-zinc-900 dark:text-white mb-4">รายการกู้ข้อมูลแยกตามสถานะ</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {Object.entries(statusLabels).map(([key, { label, Icon, color }]) => (
+            {ORDERED_TRACKS.map((key: TrackStatus) => (
               <Link
                 href={`/admin/change-status/${key}`}
                 key={key}
                 className="bg-zinc-100 dark:bg-zinc-700 p-4 rounded-lg shadow hover:bg-zinc-200 dark:hover:bg-zinc-600 transition-all flex flex-col justify-between h-28"
               >
                 <div className="flex items-center gap-3">
-                  <Icon className={`${color} w-6 h-6`} />
-                  <h3 className="text-sm sm:text-lg font-medium text-left dark:text-white">{label}</h3>
+                  <h3 className="text-sm sm:text-lg font-medium text-left dark:text-white">{STATUS_TH_TRACK[key]}</h3>
                 </div>
-                <p className={`text-2xl sm:text-4xl font-bold ${color} text-center`}>{stats[key] ?? 0}</p>
+                <p className={`text-2xl sm:text-4xl font-bold text-center`}>{(() => { const dict = (data?.statuses ?? {}) as Record<string, number>; let sum = 0; for (const [rk, v] of Object.entries(dict)) { const t = normalizeToTrackStatusLocal(rk); if (t === key) sum += Number(v ?? 0); } return sum; })()}</p>
               </Link>
             ))}
           </div>
         </div>
       </main>
-      {mobileOpen && (
-        <div className="fixed inset-0 z-50 md:hidden">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setMobileOpen(false)} />
-          <div className="absolute left-0 top-0 h-full w-72 max-w-[80vw] bg-zinc-900 text-white shadow-2xl p-4 overflow-y-auto">
-            <div className="flex items-center justify-between mb-2">
-              <span className="font-semibold">เมนู</span>
-              <button
-                type="button"
-                className="rounded-md px-2 py-1 text-sm bg-zinc-800 hover:bg-zinc-700"
-                onClick={() => setMobileOpen(false)}
-                aria-label="ปิดเมนู"
-              >✕</button>
-            </div>
-            <SidebarAdmin />
-          </div>
-        </div>
-      )}
     </div>
-  );
-};
-
-export default AdminDashboardPage;
+  )
+}
+export default AdminDashboardPage
